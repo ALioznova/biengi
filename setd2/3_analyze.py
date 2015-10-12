@@ -36,6 +36,7 @@ def draw_hist(tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, norm
 	pylab.title('PSI for ' + os.path.basename(d))
 	pylab.legend(loc='best')
 	fig_hist.savefig(pic_path)
+	pylab.close(fig_hist)
 	return (tumor_setd2_broken_filtered, tumor_filtered, normal_filtered)
 
 def draw_delta_hist(tumor_setd2_broken, tumor, normal, pic_path):
@@ -50,11 +51,12 @@ def draw_delta_hist(tumor_setd2_broken, tumor, normal, pic_path):
 	if len(tumor_normal) == 0 and len(tumor_setd2_normal) == 0:
 		return ([], [])
 	data_normal = [tumor_setd2_normal, tumor_normal]
-	fig_hist_normal = pylab.figure()
+	fig_hist_delta = pylab.figure()
 	n, bins, patches = pylab.hist(data_normal, bins=35, normed=1, histtype='bar', color=['crimson', 'blue'], label=['tsetd2-n', 't-n'])
 	pylab.title('Delta PSI for ' + os.path.basename(d))
 	pylab.legend(loc='best')
-	fig_hist_normal.savefig(pic_path)
+	fig_hist_delta.savefig(pic_path)
+	pylab.close(fig_hist_delta)
 	return (tumor_setd2_normal, tumor_normal)
 
 if __name__ == '__main__':
@@ -77,7 +79,7 @@ if __name__ == '__main__':
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
-		print "processing", d
+		print "processing", os.path.basename(d)
 		in_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
 		(tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
 		hist_path = os.path.join(os.path.join(pics_dir, 'hist'), os.path.basename(d) + '_hist.png')
@@ -97,6 +99,13 @@ if __name__ == '__main__':
 			continue
 	
 		H, pval = mstats.kruskalwallis(tumor_setd2_normal, tumor_normal)
+		if pval < 0.05:
+			print("Reject NULL hypothesis - Significant differences exist between groups.")
+		if pval > 0.05:
+			print("Accept NULL hypothesis - No significant difference between groups.")
+
+
+		U, pval = stats.mannwhitneyu(tumor_setd2_normal, tumor_normal)
 		if pval < 0.05:
 			print("Reject NULL hypothesis - Significant differences exist between groups.")
 		if pval > 0.05:
