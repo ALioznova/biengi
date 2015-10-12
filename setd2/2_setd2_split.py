@@ -167,24 +167,13 @@ def compute(psi_filename, maf_dir):
 		normal_psi_spliced_average.append(numpy.nanmean(normal_psi_cur))
 	return (tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average)
 
-def output_sample_avarage_arrays(tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, tumor_setd2_broken_fn, tumor_fn, normal_fn):
-	tumor_setd2_broken_file = open(tumor_setd2_broken_fn, 'w')
-	tumor_setd2_broken_file.write('Number: ' + str(tumor_setd2_broken_num) + '\n')
-	for el in tumor_setd2_broken_psi_spliced_average:
-		tumor_setd2_broken_file.write(str(el) + '\n')
-	tumor_setd2_broken_file.close()
+def output_sample_avarage_arrays(tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn):
+	out_f = open(out_fn, 'w')
+	out_f.write('Tumor_setd2:' + str(tumor_setd2_broken_num) + '\tTumor:' + str(tumor_num) + '\tNorma:' + str(normal_num) + '\n')
+	for i in xrange(len(normal_psi_spliced_average)):
+		out_f.write(str(tumor_setd2_broken_psi_spliced_average[i]) + '\t' + str(tumor_psi_spliced_average[i]) + '\t' + str(normal_psi_spliced_average[i]) + '\n')
+	out_f.close()
 
-	tumor_file = open(tumor_fn, 'w')
-	tumor_file.write('Number: ' + str(tumor_num) + '\n')
-	for el in tumor_psi_spliced_average:
-		tumor_file.write(str(el) + '\n')
-	tumor_file.close()
-
-	normal_file = open(normal_fn, 'w')
-	normal_file.write('Number: ' + str(normal_num) + '\n')
-	for el in normal_psi_spliced_average:
-		normal_file.write(str(el) + '\n')
-	normal_file.close()
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -213,9 +202,7 @@ if __name__ == '__main__':
 		
 		(tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average) = compute(psi_filename, maf_dir)
 
-		tumor_setd2_broken_fn = os.path.join(d, os.path.basename(d) + '_tumor_setd2_broken_filtered.txt')
-		tumor_fn = os.path.join(d, os.path.basename(d) + '_tumor_filtered.txt')
-		normal_fn = os.path.join(d, os.path.basename(d) + '_normal_filtered.txt')
+		out_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
 		
-		output_sample_avarage_arrays(tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, tumor_setd2_broken_fn, tumor_fn, normal_fn)
+		output_sample_avarage_arrays(tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn)
 
