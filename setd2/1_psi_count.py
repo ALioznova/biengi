@@ -22,15 +22,15 @@ def read_data(in_f):
 		(end_chr, end_coord, end_strand) = junction_end.split(':')
 		end_coord = int(end_coord)
 		if beg_chr != end_chr:
-			print "CHR"
+			print 'CHR'
 			continue
 		if beg_strand != end_strand:
-			print "STRAND"
+			print 'STRAND'
 			continue
 		coverage = [int(n) for n in line.split()[1:]]
-		if not data.has_key(beg_chr):
-			data[beg_chr] = []
-		data[beg_chr].append(data_frame(beg_coord, end_coord, coverage))
+		if not data.has_key(beg_chr + beg_strand):
+			data[beg_chr + beg_strand] = []
+		data[beg_chr + beg_strand].append(data_frame(beg_coord, end_coord, coverage))
 	return (data, samples_number, samples_names)
 
 def build_interval_trees(data):
@@ -74,6 +74,7 @@ def find_spliced_intervals(data):
 	return intervals
 
 def calculate_psi(N_ab, N_bc, N_ac):
+	# http://geuvadiswiki.crg.es/index.php/Percentage_Splicing_Index
 	if N_ab + N_bc + N_ac == 0:
 		return float('nan')
 	if (N_ab + N_bc) * 0.5 + N_ac <= 10:
@@ -109,30 +110,30 @@ def compute(in_fn, out_fn, out_gb_fn, gb_needed):
 		out_genome_browser.close()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print "Usage:", sys.argv[0], "-d <data directory> "
+		print 'Usage:', sys.argv[0], '-d <data directory> '
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='PSI count')
-	parser.add_argument("-d", "--data_dir", help="data directory", required=True)
+	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
 
 	if not os.path.isdir(data_dir):
-		print >> sys.stderr, "Not a directory " + data_dir
+		print >> sys.stderr, 'Not a directory ' + data_dir
 		sys.exit(1)
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
-		print "processing", d
-		in_f = os.path.join(d, os.path.basename(d) + '.rnaseqv2__illuminahiseq_rnaseqv2__unc_edu__Level_3__junction_quantification__data.data.txt')
+		print 'processing', d
+		for elem in os.listdir(d):
+			if 'junction_quantification' in elem:
+				in_f = os.path.join(d, elem)
 		if not os.path.exists(in_f):
 			print 'no such file:', in_f
 			continue
-		out_f = os.path.join(d, os.path.basename(d) + '_PSI_filtered.txt')
-		out_genome_browser = os.path.join(d, os.path.basename(d) + '_PSI_genome_browser.txt')
-		
-		compute(in_f, out_f, out_genome_browser, False)
+		out_f = os.path.join(d, os.path.basename(d) + '_PSI.txt')
+		compute(in_f, out_f, '', False)
 
 

@@ -135,9 +135,13 @@ def compute(psi_filename, maf_dir):
 	sample_type = [int(s.split('-')[3][:2]) for s in sample_names]
 
 	data = []
+	pos = []
 	for line in inf:
 		data.append(Data_frame(line.split()[0], line.split()[1:]))
+		pos.append(line.split()[0])
 	inf.close()
+
+	print pos[:10], len(pos)
 	
 	tumor_setd2_broken_num = 0
 	tumor_num = 0
@@ -165,44 +169,50 @@ def compute(psi_filename, maf_dir):
 		tumor_setd2_broken_psi_spliced_average.append(numpy.nanmean(tumor_setd2_broken_psi_cur))
 		tumor_psi_spliced_average.append(numpy.nanmean(tumor_psi_cur))
 		normal_psi_spliced_average.append(numpy.nanmean(normal_psi_cur))
-	return (tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average)
+	return (pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average)
 
-def output_sample_avarage_arrays(tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn):
+def output_sample_avarage_arrays(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn):
 	out_f = open(out_fn, 'w')
-	out_f.write('Tumor_setd2:' + str(tumor_setd2_broken_num) + '\tTumor:' + str(tumor_num) + '\tNorma:' + str(normal_num) + '\n')
+	out_f.write('Pos\tTumor_setd2:' + str(tumor_setd2_broken_num) + '\tTumor:' + str(tumor_num) + '\tNorma:' + str(normal_num) + '\n')
 	for i in xrange(len(normal_psi_spliced_average)):
-		out_f.write(str(tumor_setd2_broken_psi_spliced_average[i]) + '\t' + str(tumor_psi_spliced_average[i]) + '\t' + str(normal_psi_spliced_average[i]) + '\n')
+		out_f.write(pos[i] + '\t' + str(tumor_setd2_broken_psi_spliced_average[i]) + '\t' + str(tumor_psi_spliced_average[i]) + '\t' + str(normal_psi_spliced_average[i]) + '\n')
 	out_f.close()
 
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print "Usage:", sys.argv[0], "-d <data directory> "
+		print 'Usage:', sys.argv[0], '-d <data directory> '
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Split to normal, tumor with setd2 mutation and tumor without mutation in setd2')
-	parser.add_argument("-d", "--data_dir", help="data directory", required=True)
+	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
 
 	if not os.path.isdir(data_dir):
-		print >> sys.stderr, "Not a directory " + data_dir
+		print >> sys.stderr, 'Not a directory ' + data_dir
 		sys.exit(1)
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
-		print "processing", d
+		print 'processing', d
+		for elem in os.listdir(d):
+			if 'Mutation_Packager_Oncotated_Raw_Calls' in elem:
+				maf_dir = os.path.join(d, elem)
+		if not os.path.exists(maf_dir):
+			print 'no such dir:', maf_dir
+
 		for elem in os.listdir(d):
 			if os.path.isdir(os.path.join(os.path.join(data_dir, d), elem)):
 				maf_dir = os.path.abspath(os.path.join(os.path.join(data_dir, d), elem))
-		psi_filename = os.path.join(d, os.path.basename(d) + '_PSI_filtered.txt')
+		psi_filename = os.path.join(d, os.path.basename(d) + '_PSI.txt')
 		if not os.path.exists(psi_filename):
 			print 'no such file:', psi_filename
 			continue
 		
-		(tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average) = compute(psi_filename, maf_dir)
+		(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average) = compute(psi_filename, maf_dir)
 
 		out_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
 		
-		output_sample_avarage_arrays(tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn)
+		output_sample_avarage_arrays(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn)
 
