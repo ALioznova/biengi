@@ -8,12 +8,13 @@ from enum import Enum, unique
 
 class Data_frame:
 	def __init__(self, description, psi):
-		(chr_name, begin1, end1, begin2, end2) = description.split(':')
+		(chr_name, begin1, end1, begin2, end2, strand) = description.split(':')
 		self.chr_name = chr_name
 		self.beg1 = int(begin1)
 		self.end1 = int(end1)
 		self.beg2 = int(begin2)
 		self.end2 = int(end2)
+		self.strand = strand
 		self.psi = [float(i) for i in psi]
 
 class OrderedEnum(Enum):
@@ -141,8 +142,6 @@ def compute(psi_filename, maf_dir):
 		pos.append(line.split()[0])
 	inf.close()
 
-	print pos[:10], len(pos)
-	
 	tumor_setd2_broken_num = 0
 	tumor_num = 0
 	normal_num = 0
@@ -181,7 +180,7 @@ def output_sample_avarage_arrays(pos, tumor_setd2_broken_num, tumor_num, normal_
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory> '
+		print 'Usage:', sys.argv[0], '-d <data directory>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Split to normal, tumor with setd2 mutation and tumor without mutation in setd2')

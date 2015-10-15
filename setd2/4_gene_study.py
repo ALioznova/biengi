@@ -7,13 +7,21 @@ import numpy
 
 class Pos_rec:
 	def __init__(self, description):
-		(chr_name, begin1, end1, begin2, end2) = description.split(':')
-		self.chr_name = chr_name[:-1]
-		self.strand = chr_name[-1]
+		(chr_name, begin1, end1, begin2, end2, strand) = description.split(':')
+		self.chr_name = chr_name
 		self.beg1 = int(begin1)
 		self.end1 = int(end1)
 		self.beg2 = int(begin2)
 		self.end2 = int(end2)
+		self.strand = strand
+
+class Locus:
+	def __init__(self, description):
+		(chr_name, coords, strand) = description.split(':')
+		self.chr_name = chr_name
+		self.beg = int(coords.split('-')[0])
+		self.end = int(coords.split('-')[1])
+		self.strand = strand
 
 def read_data(in_fn):
 	in_f = open(in_fn)
@@ -34,13 +42,13 @@ def read_data(in_fn):
 	return (pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal)
 
 class Genes:
-	def __init__(self, name, begin, end, exons):
+	def __init__(self, name, locus, exons):
 		self.name = name
-		self.begin = begin
-		self.end = end
+		self.locus = locus
 		self.exons = exons
 
 def parse_genes_file(genes_file):
+	# data source: https://tcga-data.nci.nih.gov/docs/GAF/GAF.hg19.June2011.bundle/outputs/TCGA.hg19.June2011.gaf
 	gf = open(genes_file)
 	gf.readline()
 	genes_data = []
@@ -48,8 +56,9 @@ def parse_genes_file(genes_file):
 		if line.split('\t')[2] == 'gene':
 			name = line.split('\t')[1]
 			exons = line.split('\t')[14]
-			locus = line.split('\t')[16]
-#			genes_data.append(Genes(name, begin, end, exons))
+			locus_data = line.split('\t')[16].split(';')
+			locus = [Locus(ld) for ld in locus_data]
+			genes_data.append(Genes(name, locus, exons))
 	return genes_data
 
 if __name__ == '__main__':
@@ -68,7 +77,8 @@ if __name__ == '__main__':
 		print 'No such file', genes_fn
 		sys.exit(1)
 	
-	parse_genes_file(genes_fn)
+	genes_data = parse_genes_file(genes_fn)
+	print 'genes', len(genes_data)
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
@@ -82,6 +92,4 @@ if __name__ == '__main__':
 				gene_expression_fn = os.path.join(d, elem)
 		if not (gene_expression_fn):
 			continue
-		
-		
-		
+

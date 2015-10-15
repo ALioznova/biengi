@@ -95,6 +95,7 @@ if __name__ == '__main__':
 			print('Accept NULL hypothesis - No significant difference between groups.')
 
 		if len(tumor_setd2_normal) == 0 or len(tumor_normal) == 0:
+			print
 			continue
 
 		U, pval = stats.mannwhitneyu(tumor_setd2_normal, tumor_normal)
@@ -112,4 +113,6 @@ if __name__ == '__main__':
 			print('Reject NULL hypothesis - Significant differences exist between groups.')
 		if pval > 0.05:
 			print('Accept NULL hypothesis - No significant difference between groups.')
+		
+		print
 

@@ -81,7 +81,7 @@ def calculate_psi(N_ab, N_bc, N_ac):
 		return float('nan')
 	return (float(N_ab + N_bc)/(N_ab + N_ac + N_bc))
 
-def compute(in_fn, out_fn, out_gb_fn, gb_needed):
+def compute(in_fn, out_fn):
 	in_f = open(in_fn)
 	(data, samples_num, samples_names) = read_data(in_f)
 	in_f.close()
@@ -93,22 +93,11 @@ def compute(in_fn, out_fn, out_gb_fn, gb_needed):
 	for (chr_name, chr_intervals) in intervals.iteritems():
 		chr_data = data[chr_name]
 		for elem in chr_intervals:
-			out_f.write(chr_name + ':' + str(chr_data[elem.ab].begin) + ':' + str(chr_data[elem.ab].end) + ':' + str(chr_data[elem.bc].begin) + ':' + str(chr_data[elem.bc].end))
+			out_f.write(chr_name[:-1] + ':' + str(chr_data[elem.ab].begin) + ':' + str(chr_data[elem.ab].end) + ':' + str(chr_data[elem.bc].begin) + ':' + str(chr_data[elem.bc].end) + ':' + chr_name[-1])
 			for i in xrange(samples_num):
 				out_f.write('\t' + str(calculate_psi(chr_data[elem.ab].coverage[i], chr_data[elem.bc].coverage[i], chr_data[elem.ac].coverage[i])))
 			out_f.write('\n')
 	out_f.close()
-
-	if gb_needed:
-		out_genome_browser= open(out_gb_fn, 'w')
-		for (chr_name, chr_intervals) in intervals.iteritems():
-			chr_data = data[chr_name]
-			for elem in chr_intervals:
-				out_genome_browser.write(chr_name + '\t' + str(chr_data[elem.ab].begin) + '\t' + str(chr_data[elem.ab].end) + '\n')
-				out_genome_browser.write(chr_name + '\t' + str(chr_data[elem.bc].begin) + '\t' + str(chr_data[elem.bc].end) + '\n')
-				out_genome_browser.write(chr_name + '\t' + str(chr_data[elem.ac].begin) + '\t' + str(chr_data[elem.ac].end) + '\n')
-		out_genome_browser.close()
-
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -134,6 +123,6 @@ if __name__ == '__main__':
 			print 'no such file:', in_f
 			continue
 		out_f = os.path.join(d, os.path.basename(d) + '_PSI.txt')
-		compute(in_f, out_f, '', False)
-
+		compute(in_f, out_f)
+		
 
