@@ -101,6 +101,21 @@ def parse_genes_file(genes_file):
 
 	return (genes_data, exon_dict, interval_trees)
 
+def get_exons_names(exon_dict, interval_trees, pos):
+	exon_names = {}
+	for p in pos:
+		if not exon_names.has_key((p.chr_name, p.strand)):
+			exon_names[(p.chr_name, p.strand)] = {}
+		if exon_dict[(p.chr_name, p.strand)].has_key((p.end1, p.beg2)):
+			exon_names[(p.chr_name, p.strand)][(p.end1, p.beg2)] = exon_dict[(p.chr_name, p.strand)][(p.end1, p.beg2)]
+		else:
+			left_genes = Set([lg[2] for lg in interval_trees[(p.chr_name, p.strand)][p.end1 + 0.1]])
+			right_genes = Set([rg[2] for rg in interval_trees[(p.chr_name, p.strand)][p.beg2 - 0.1]])
+			if len(left_genes) != 0 or len(right_genes) != 0:
+				if len(left_genes.intersection(right_genes)) != 0:
+					exon_names[(p.chr_name, p.strand)][(p.end1, p.beg2)] = left_genes.intersection(right_genes)
+	return exon_names
+
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -126,26 +141,13 @@ if __name__ == '__main__':
 		print 'processing', os.path.basename(d)
 		in_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
 		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
+		exon_names = get_exons_names(exon_dict, interval_trees, pos)
 
-		pos_genes = []
-		for p in pos:
-			if exon_dict[(p.chr_name, p.strand)].has_key((p.end1, p.beg2)):
-				pos_genes.append(exon_dict[(p.chr_name, p.strand)][(p.end1, p.beg2)])
-			else:
-				left_genes = Set([lg[2] for lg in interval_trees[(p.chr_name, p.strand)][p.end1 + 0.1]])
-				right_genes = Set([rg[2] for rg in interval_trees[(p.chr_name, p.strand)][p.beg2 - 0.1]])
-				if len(left_genes) != 0 or len(right_genes) != 0:
-					if len(left_genes.intersection(right_genes)) != 0:
-						pos_genes.append(left_genes.union(right_genes))
-		print len(pos), len(pos_genes)
 		gene_expression_fn = None
 		for elem in os.listdir(d):
 			if 'gene_expression' in elem:
 				gene_expression_fn = os.path.join(d, elem)
 		if not (gene_expression_fn):
 			continue
-
-
-
 
 
