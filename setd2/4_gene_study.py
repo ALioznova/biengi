@@ -5,6 +5,7 @@ import sys
 import argparse
 import numpy
 from sets import Set
+from intervaltree import Interval, IntervalTree
 
 class Pos_rec:
 	def __init__(self, description):
@@ -14,7 +15,10 @@ class Pos_rec:
 		self.end1 = int(end1)
 		self.beg2 = int(begin2)
 		self.end2 = int(end2)
-		self.strand = strand
+		if strand == '+':
+			self.strand = True
+		else:
+			self.strand = False
 
 def read_data(in_fn):
 	in_f = open(in_fn)
@@ -46,13 +50,19 @@ class Locus:
 		self.chr_name = chr_name
 		self.beg = int(coords.split('-')[0])
 		self.end = int(coords.split('-')[1])
-		self.strand = strand
+		if strand == '+':
+			self.strand = True
+		else:
+			self.strand = False
 		
 class Exons:
 	def __init__(self, description):
 		(chr_name, coords, strand) = description.split(':')
 		self.chr_name = chr_name
-		self.strand = strand
+		if strand == '+':
+			self.strand = True
+		else:
+			self.strand = False
 		self.begs = [int(c.split('-')[0]) for c in coords.split(',')]
 		self.ends = [int(c.split('-')[1]) for c in coords.split(',')]
 
@@ -62,6 +72,7 @@ def parse_genes_file(genes_file):
 	gf.readline()
 	genes_data = {}
 	exon_dict = {}
+	interval_trees = {}
 	for line in gf:
 		if line.split('\t')[2] == 'gene':
 			name = line.split('\t')[1]
@@ -74,14 +85,21 @@ def parse_genes_file(genes_file):
 				genes_data['|'.join(name.split('|')[:-1])].append(Genes(name, locus, exons))
 			else:
 				genes_data[name] = [Genes(name, locus, exons)] # the only line with gene description
-			# filling exon_dict: (chr, strand) -> (exon_start, exon_end) -> Set(gene_name)
 			if not exon_dict.has_key((exons.chr_name, exons.strand)):
 				exon_dict[(exons.chr_name, exons.strand)] = {}
+			if not interval_trees.has_key((exons.chr_name, exons.strand)):
+				interval_trees[(exons.chr_name, exons.strand)] = IntervalTree()
 			for i in xrange(len(exons.begs)):
+				# filling exon_dict: (chr, strand) -> (exon_start, exon_end) -> Set(gene_name)
+				if exons.begs[i] == exons.ends[i]:
+					continue
 				if not exon_dict[(exons.chr_name, exons.strand)].has_key((exons.begs[i], exons.ends[i])):
 					exon_dict[(exons.chr_name, exons.strand)][(exons.begs[i], exons.ends[i])] = Set()
 				exon_dict[(exons.chr_name, exons.strand)][(exons.begs[i], exons.ends[i])].add('|'.join(name.split('|')[:2]))
-	return (genes_data, exon_dict)
+				# filling interval_trees:
+				interval_trees[(exons.chr_name, exons.strand)][exons.begs[i] : exons.ends[i]] = '|'.join(name.split('|')[:2])
+
+	return (genes_data, exon_dict, interval_trees)
 
 
 if __name__ == '__main__':
@@ -100,7 +118,7 @@ if __name__ == '__main__':
 		print 'No such file', genes_fn
 		sys.exit(1)
 	
-	(genes_data, exon_dict) = parse_genes_file(genes_fn)
+	(genes_data, exon_dict, interval_trees) = parse_genes_file(genes_fn)
 	print 'Total genes numer', len(genes_data)
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
@@ -109,10 +127,25 @@ if __name__ == '__main__':
 		in_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
 		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
 
+		pos_genes = []
+		for p in pos:
+			if exon_dict[(p.chr_name, p.strand)].has_key((p.end1, p.beg2)):
+				pos_genes.append(exon_dict[(p.chr_name, p.strand)][(p.end1, p.beg2)])
+			else:
+				left_genes = Set([lg[2] for lg in interval_trees[(p.chr_name, p.strand)][p.end1 + 0.1]])
+				right_genes = Set([rg[2] for rg in interval_trees[(p.chr_name, p.strand)][p.beg2 - 0.1]])
+				if len(left_genes) != 0 or len(right_genes) != 0:
+					if len(left_genes.intersection(right_genes)) != 0:
+						pos_genes.append(left_genes.union(right_genes))
+		print len(pos), len(pos_genes)
 		gene_expression_fn = None
 		for elem in os.listdir(d):
 			if 'gene_expression' in elem:
 				gene_expression_fn = os.path.join(d, elem)
 		if not (gene_expression_fn):
 			continue
+
+
+
+
 
