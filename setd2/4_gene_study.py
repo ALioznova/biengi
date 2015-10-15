@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 import numpy
+from sets import Set
 
 class Pos_rec:
 	def __init__(self, description):
@@ -13,14 +14,6 @@ class Pos_rec:
 		self.end1 = int(end1)
 		self.beg2 = int(begin2)
 		self.end2 = int(end2)
-		self.strand = strand
-
-class Locus:
-	def __init__(self, description):
-		(chr_name, coords, strand) = description.split(':')
-		self.chr_name = chr_name
-		self.beg = int(coords.split('-')[0])
-		self.end = int(coords.split('-')[1])
 		self.strand = strand
 
 def read_data(in_fn):
@@ -47,19 +40,49 @@ class Genes:
 		self.locus = locus
 		self.exons = exons
 
+class Locus:
+	def __init__(self, description):
+		(chr_name, coords, strand) = description.split(':')
+		self.chr_name = chr_name
+		self.beg = int(coords.split('-')[0])
+		self.end = int(coords.split('-')[1])
+		self.strand = strand
+		
+class Exons:
+	def __init__(self, description):
+		(chr_name, coords, strand) = description.split(':')
+		self.chr_name = chr_name
+		self.strand = strand
+		self.begs = [int(c.split('-')[0]) for c in coords.split(',')]
+		self.ends = [int(c.split('-')[1]) for c in coords.split(',')]
+
 def parse_genes_file(genes_file):
 	# data source: https://tcga-data.nci.nih.gov/docs/GAF/GAF.hg19.June2011.bundle/outputs/TCGA.hg19.June2011.gaf
 	gf = open(genes_file)
 	gf.readline()
-	genes_data = []
+	genes_data = {}
+	exon_dict = {}
 	for line in gf:
 		if line.split('\t')[2] == 'gene':
 			name = line.split('\t')[1]
-			exons = line.split('\t')[14]
-			locus_data = line.split('\t')[16].split(';')
-			locus = [Locus(ld) for ld in locus_data]
-			genes_data.append(Genes(name, locus, exons))
-	return genes_data
+			exons = Exons(line.split('\t')[14])
+			locus = [Locus(l) for l in line.split('\t')[16].split(';')]
+			# filling genes_data: gene_name -> [Genes]
+			if len(name.split('|')) > 2: # gene has multiple locuses
+				if not genes_data.has_key('|'.join(name.split('|')[:-1])):
+					genes_data['|'.join(name.split('|')[:-1])] = []
+				genes_data['|'.join(name.split('|')[:-1])].append(Genes(name, locus, exons))
+			else:
+				genes_data[name] = [Genes(name, locus, exons)] # the only line with gene description
+			# filling exon_dict: (chr, strand) -> (exon_start, exon_end) -> Set(gene_name)
+			if not exon_dict.has_key((exons.chr_name, exons.strand)):
+				exon_dict[(exons.chr_name, exons.strand)] = {}
+			for i in xrange(len(exons.begs)):
+				if not exon_dict[(exons.chr_name, exons.strand)].has_key((exons.begs[i], exons.ends[i])):
+					exon_dict[(exons.chr_name, exons.strand)][(exons.begs[i], exons.ends[i])] = Set()
+				exon_dict[(exons.chr_name, exons.strand)][(exons.begs[i], exons.ends[i])].add('|'.join(name.split('|')[:2]))
+	return (genes_data, exon_dict)
+
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -77,8 +100,8 @@ if __name__ == '__main__':
 		print 'No such file', genes_fn
 		sys.exit(1)
 	
-	genes_data = parse_genes_file(genes_fn)
-	print 'genes', len(genes_data)
+	(genes_data, exon_dict) = parse_genes_file(genes_fn)
+	print 'Total genes numer', len(genes_data)
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
