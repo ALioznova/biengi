@@ -12,6 +12,7 @@ from enum import Enum, unique
 class Pos_rec:
 	def __init__(self, description):
 		(chr_name, begin1, end1, begin2, end2, strand) = description.split(':')
+		self.desc = description
 		self.chr_name = chr_name
 		self.beg1 = int(begin1)
 		self.end1 = int(end1)
@@ -159,7 +160,7 @@ def get_dist_exon_gene_beg(exon_to_genes, genes_data, pos_rec):
 def get_gene_dist(exon_to_genes, genes_data, pos):
 	gene_beg_dist = []
 	for i in xrange(len(pos)):
-		gene_beg_dist.append(get_dist_exon_gene_beg(exon_to_genes, genes_data, pos[i]))
+		gene_beg_dist.append(list(Set(get_dist_exon_gene_beg(exon_to_genes, genes_data, pos[i]))))
 	return gene_beg_dist
 
 class OrderedEnum(Enum):
@@ -406,13 +407,39 @@ if __name__ == '__main__':
 		for elem in os.listdir(d):
 			if 'gene_expression' in elem:
 				gene_expression_fn = os.path.join(d, elem)
-		if not (gene_expression_fn):
-			continue
-		for elem in os.listdir(d):
-			if 'Mutation_Packager_Oncotated_Raw_Calls' in elem:
-				maf_dir = os.path.join(d, elem)
-		if not os.path.exists(maf_dir):
-			print 'no such dir:', maf_dir
-		(tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr) = get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir)
-		print tumor_setd2_gene_expr
+		if gene_expression_fn:
+			for elem in os.listdir(d):
+				if 'Mutation_Packager_Oncotated_Raw_Calls' in elem:
+					maf_dir = os.path.join(d, elem)
+			if not os.path.exists(maf_dir):
+				print 'no such dir:', maf_dir
+			(tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr) = get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir)
+
+		fout = open(os.path.join(d, os.path.basename(d) + '_expression_and_dist.txt'), 'w')
+		fout.write('Pos:\tGene_dist:\tExpr_tumorsetd2:\tExpr_tumor_wt:\tExpr_normal:\n')
+		for i in xrange(len(pos)):
+			new_line = pos[i].desc + '\t'
+			for dst in gene_beg_dist[i]:
+				new_line += (str(dst) + ',')
+			if len(gene_beg_dist[i]) != 0:
+				new_line = new_line[:-1]
+			else:
+				new_line != 'nan'
+			new_line += '\t'
+			for expr in tumor_setd2_gene_expr[i]:
+				new_line += (str(expr) + ',')
+			if len(tumor_setd2_gene_expr[i]) != 0:
+				new_line = new_line[:-1]
+			new_line += '\t'
+			for expr in tumor_gene_expr[i]:
+				new_line += (str(expr) + ',')
+			if len(tumor_gene_expr[i]) != 0:
+				new_line = new_line[:-1]
+			new_line += '\t'
+			for expr in normal_gene_expr[i]:
+				new_line += (str(expr) + ',')
+			if len(normal_gene_expr[i]) != 0:
+				new_line = new_line[:-1]
+			new_line += '\n'
+			fout.write(new_line)
 
