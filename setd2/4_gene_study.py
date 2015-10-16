@@ -151,6 +151,35 @@ def get_dist_exon_gene_beg(exon_to_genes, genes_data, pos_rec):
 								dist.append(loc.end - exon_end)
 	return dist
 
+def get_gene_dist(exon_to_genes, genes_data, pos):
+	gene_beg_dist = []
+	for i in xrange(len(pos)):
+		gene_beg_dist.append(get_dist_exon_gene_beg(exon_to_genes, genes_data, pos[i]))
+	return gene_beg_dist
+
+class Gene_expr:
+	def __init__(self, name, tumor, tumor_num, tumor_setd2, tumor_setd2_num, normal, normal_num):
+		self.name = name
+		self.tumor = tumor
+		self.tumor_num = tumor_num
+		self.tumor_setd2 = tumor_setd2
+		self.tumor_setd2_num = tumor_setd2_num
+		self.normal = normal
+		self.normal_num = normal_num
+
+def process_gene_expression_file(gene_expression_fn, sample_classification_fn):
+	gene_expression = {}
+	fin = open(gene_expression_fn)
+	header = fin.readline()
+	fin.readline()
+	for line in fin:
+		pass
+	return gene_expression
+
+def get_gene_expression(gene_expression_fn, exon_to_genes, pos, sample_classification_fn):
+	gene_expression = process_gene_expression_file(gene_expression_fn, sample_classification_fn)
+	return
+
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
 		print 'Usage:', sys.argv[0], '-d <data directory> -g <gene annotation file>'
@@ -176,9 +205,8 @@ if __name__ == '__main__':
 		in_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
 		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
 		exon_to_genes = exon_to_gene_names(exon_dict, interval_trees, pos)
-		
-		for i in xrange(len(pos)):
-			gene_beg_dist = get_dist_exon_gene_beg(exon_to_genes, genes_data, pos[i])
+
+		gene_beg_dist = get_gene_dist(exon_to_genes, genes_data, pos)		
 
 		gene_expression_fn = None
 		for elem in os.listdir(d):
@@ -186,5 +214,6 @@ if __name__ == '__main__':
 				gene_expression_fn = os.path.join(d, elem)
 		if not (gene_expression_fn):
 			continue
-
+		sample_classification_fn = os.path.join(d, os.path.basename(d) + '_sample_classification.txt') # generated on step 2
+		gene_expression = get_gene_expression(gene_expression_fn, exon_to_genes, pos, sample_classification_fn)
 
