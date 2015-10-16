@@ -355,7 +355,24 @@ def process_gene_expression_file(gene_expression_fn, maf_dir):
 
 def get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir):
 	gene_expression = process_gene_expression_file(gene_expression_fn, maf_dir)
-	return
+	tumor_setd2 = []
+	tumor = []
+	normal = []
+	for p in pos:
+		tumor_setd2_cur = []
+		tumor_cur = []
+		normal_cur = []
+		if exon_to_genes[(p.chr_name, p.strand)].has_key((p.end1, p.beg2)):
+			for gene in list(exon_to_genes[(p.chr_name, p.strand)][(p.end1, p.beg2)]):
+				if not gene_expression.has_key(gene):
+					continue
+				tumor_setd2_cur.append(gene_expression[gene].tumor_setd2)
+				tumor_cur.append(gene_expression[gene].tumor)
+				normal_cur.append(gene_expression[gene].normal)
+		tumor_setd2.append(tumor_setd2_cur)
+		tumor.append(tumor_cur)
+		normal.append(normal_cur)
+	return (tumor_setd2, tumor, normal)
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -396,5 +413,6 @@ if __name__ == '__main__':
 				maf_dir = os.path.join(d, elem)
 		if not os.path.exists(maf_dir):
 			print 'no such dir:', maf_dir
-		gene_expression = get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir)
+		(tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr) = get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir)
+		print tumor_setd2_gene_expr
 
