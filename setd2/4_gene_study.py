@@ -144,14 +144,16 @@ def get_dist_exon_gene_beg(exon_to_genes, genes_data, pos_rec):
 						if loc.chr_name != gene.exons.chr_name:
 							continue
 						if get_overlap((loc.beg, loc.end), (ge_beg, ge_end)) != 0:
-							if loc.strand == exon_strand:
+							if loc.strand == True and exon_strand == True:
 								if exon_beg - loc.beg < 0 or exon_beg - loc.beg > loc.end - loc.beg:
 									continue
 								dist.append(exon_beg - loc.beg)
-							else:
+							elif loc.strand == False and exon_strand == False:
 								if loc.end - exon_end < 0 or loc.end - exon_end > loc.end - loc.beg:
 									continue
 								dist.append(loc.end - exon_end)
+							else:
+								continue
 	return dist
 
 def get_gene_dist(exon_to_genes, genes_data, pos):
@@ -282,13 +284,13 @@ class Gene_expr:
 		self.normal_num = normal_num
 
 class Sample_type(Enum):
+	unknown = -1
 	norma = 0
 	tumor_wild_type = 1
 	tumor_unclassified = 2
 	tumor_setd2 = 3
 
 def process_gene_expression_file(gene_expression_fn, maf_dir):
-	gene_expression = {}
 	fin = open(gene_expression_fn)
 	sample_classification = {}
 	sample_names = fin.readline().split('\t')[1:]
@@ -305,12 +307,49 @@ def process_gene_expression_file(gene_expression_fn, maf_dir):
 					sample_classification[sample_names[i]] = Sample_type.tumor_wild_type
 				else:
 					sample_classification[sample_names[i]] = Sample_type.tumor_unclassified
+			else:
+				sample_classification[sample_names[i]] = Sample_type.tumor_unclassified
 		elif (sample_type[i] >= 10) and (sample_type[i] <= 19): # norma
 			sample_classification[sample_names[i]] = Sample_type.norma
-	print sample_classification
+		else:
+			sample_classification[sample_names[i]] = Sample_type.unknown
 	fin.readline()
+	gene_expression = {}
 	for line in fin:
-		pass
+		gene_name = line.split('\t')[0]
+		data = line.split('\t')[1:]
+		tumor_setd2_num = 0
+		tumor_num = 0
+		normal_num = 0
+		tumor_setd2_val = 0
+		tumor_val = 0
+		normal_val = 0
+		for i in xrange(len(data)):
+			if i % 3 == 0:
+				if sample_classification[sample_names[i]] == Sample_type.tumor_setd2:
+					tumor_setd2_val += (int(data[i]))
+					tumor_setd2_num += 1
+				elif sample_classification[sample_names[i]] == Sample_type.tumor_wild_type:
+					tumor_val += (int(data[i]))
+					tumor_num += 1
+				elif sample_classification[sample_names[i]] == Sample_type.norma:
+					normal_val += (int(data[i]))
+					normal_num += 1
+				else:
+					continue
+		if tumor_setd2_num != 0:
+			tumor_setd2_v = (float(tumor_setd2_val)/tumor_setd2_num)
+		else:
+			tumor_setd2_v = (float('nan'))
+		if tumor_num != 0:
+			tumor_v = (float(tumor_val)/tumor_num)
+		else:
+			tumor_v = (float('nan'))
+		if normal_num != 0:
+			normal_v = (float(normal_val)/normal_num)
+		else:
+			normal_v = (float('nan'))
+		gene_expression[gene_name] = Gene_expr(gene_name, tumor_v, tumor_num, tumor_setd2_v, tumor_setd2_num, normal_v, normal_num)
 	fin.close()
 	return gene_expression
 
@@ -344,7 +383,7 @@ if __name__ == '__main__':
 		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
 		exon_to_genes = exon_to_gene_names(exon_dict, interval_trees, pos)
 
-		gene_beg_dist = get_gene_dist(exon_to_genes, genes_data, pos)		
+		gene_beg_dist = get_gene_dist(exon_to_genes, genes_data, pos)
 
 		gene_expression_fn = None
 		for elem in os.listdir(d):
