@@ -6,6 +6,8 @@ import argparse
 import numpy
 from sets import Set
 from intervaltree import Interval, IntervalTree
+from enum import Enum, unique
+
 
 class Pos_rec:
 	def __init__(self, description):
@@ -98,6 +100,7 @@ def parse_genes_file(genes_file):
 				exon_dict[(exons.chr_name, exons.strand)][(exons.begs[i], exons.ends[i])].add('|'.join(name.split('|')[:2]))
 				# filling interval_trees for annotated exons:
 				interval_trees[(exons.chr_name, exons.strand)][exons.begs[i] : exons.ends[i]] = '|'.join(name.split('|')[:2])
+	gf.close()
 
 	return (genes_data, exon_dict, interval_trees)
 
@@ -157,6 +160,117 @@ def get_gene_dist(exon_to_genes, genes_data, pos):
 		gene_beg_dist.append(get_dist_exon_gene_beg(exon_to_genes, genes_data, pos[i]))
 	return gene_beg_dist
 
+class OrderedEnum(Enum):
+	 def __ge__(self, other):
+		 if self.__class__ is other.__class__:
+			 return self.value >= other.value
+		 return NotImplemented
+	 def __gt__(self, other):
+		 if self.__class__ is other.__class__:
+			 return self.value > other.value
+		 return NotImplemented
+	 def __le__(self, other):
+		 if self.__class__ is other.__class__:
+			 return self.value <= other.value
+		 return NotImplemented
+	 def __lt__(self, other):
+		 if self.__class__ is other.__class__:
+			 return self.value < other.value
+		 return NotImplemented
+
+@unique
+class Impact(OrderedEnum):
+	high = 3
+	moderate = 2
+	low = 1
+	modifier = 0
+	no = -1
+	unknown = -2
+
+def get_mutation_impact_dict():
+	# information source: http://www.ensembl.org/info/genome/variation/predicted_data.html#consequences
+	# useful tool: http://mutationassessor.org/
+	# one more tool: http://stothard.afns.ualberta.ca/downloads/NGS-SNP/annotate_SNPs.html
+	# and one more tool: ftp://hgdownload.cse.ucsc.edu/apache/htdocs-rr/goldenpath/help/hgVaiHelpText.html
+	mutation_impact_dict = {}
+	mutation_impact_dict['transcript_ablation'] = Impact.high
+	mutation_impact_dict['splice_acceptor_variant'] = Impact.high
+	mutation_impact_dict['splice_donor_variant'] = Impact.high
+	mutation_impact_dict['stop_gained'] = Impact.high
+	mutation_impact_dict['frameshift_variant'] = Impact.high
+	mutation_impact_dict['stop_lost'] = Impact.high
+	mutation_impact_dict['start_lost'] = Impact.high
+	mutation_impact_dict['transcript_amplification'] = Impact.high
+	mutation_impact_dict['inframe_insertion'] = Impact.moderate
+	mutation_impact_dict['inframe_deletion'] = Impact.moderate
+	mutation_impact_dict['missense_variant'] = Impact.moderate
+	mutation_impact_dict['missense'] = Impact.moderate # added
+	mutation_impact_dict['protein_altering_variant'] = Impact.moderate
+	mutation_impact_dict['splice_region_variant'] = Impact.low
+	mutation_impact_dict['incomplete_terminal_codon_variant'] = Impact.low
+	mutation_impact_dict['stop_retained_variant'] = Impact.low
+	mutation_impact_dict['synonymous_variant'] = Impact.low
+	mutation_impact_dict['coding_sequence_variant'] = Impact.modifier
+	mutation_impact_dict['mature_miRNA_variant'] = Impact.modifier
+	mutation_impact_dict['5_prime_UTR_variant'] = Impact.modifier
+	mutation_impact_dict['3_prime_UTR_variant'] = Impact.modifier # added
+	mutation_impact_dict['non_coding_transcript_exon_variant'] = Impact.modifier
+	mutation_impact_dict['intron_variant'] = Impact.modifier
+	mutation_impact_dict['NMD_transcript_variant'] = Impact.modifier
+	mutation_impact_dict['non_coding_transcript_variant'] = Impact.modifier
+	mutation_impact_dict['upstream_gene_variant'] = Impact.modifier
+	mutation_impact_dict['downstream_gene_variant'] = Impact.modifier
+	mutation_impact_dict['TFBS_ablation'] = Impact.modifier
+	mutation_impact_dict['TFBS_amplification'] = Impact.modifier
+	mutation_impact_dict['TF_binding_site_variant'] = Impact.modifier
+	mutation_impact_dict['regulatory_region_ablation'] = Impact.moderate
+	mutation_impact_dict['regulatory_region_amplification'] = Impact.modifier
+	mutation_impact_dict['feature_elongation'] = Impact.modifier
+	mutation_impact_dict['regulatory_region_variant'] = Impact.modifier
+	mutation_impact_dict['feature_truncation'] = Impact.modifier
+	mutation_impact_dict['intergenic_variant'] = Impact.modifier
+	return mutation_impact_dict
+
+def find_setd2_mutation_impact(s_file_name, mutation_impact_dict):
+	def find_mutation_type_column(line):
+		# maf common header: https://wiki.nci.nih.gov/display/TCGA/Mutation+Annotation+Format+%28MAF%29+Specification
+		# oncotator help: https://www.broadinstitute.org/oncotator/help/
+		for i in xrange(len(line)): 
+			if line[i] == 'i_Ensembl_so_term':
+				return i
+		return None
+
+	maf_file = open(s_file_name)
+	maf_file.readline()
+	maf_file.readline()
+	maf_file.readline()
+	line = maf_file.readline().split('\t')
+	mutation_type_index = find_mutation_type_column(line)
+	if mutation_type_index == None:
+		return Impact.unknown
+	impacts = [Impact.no]
+	for line in maf_file:
+		if line.startswith('SETD2\t'):
+			mutation_type = line.split('\t')[mutation_type_index]
+			if not mutation_impact_dict.has_key(mutation_type):
+				print 'Unknown mutation type:', mutation_type
+				continue
+			setd2_mutation_impact = mutation_impact_dict[mutation_type]
+			impacts.append(setd2_mutation_impact)
+	maf_file.close()
+	return max(impacts)
+
+def get_setd2_mutation_rate(maf_dir, sample_names):
+	setd2_mutation_rate = {}
+	mutation_impact_dict = get_mutation_impact_dict()
+	for sample in sample_names:
+		s_file_name = os.path.join(maf_dir, sample[:15] + '.hg19.oncotator.hugo_entrez_remapped.maf.txt')
+		if not os.path.exists(s_file_name):
+			continue
+		mutation_impact = find_setd2_mutation_impact(s_file_name, mutation_impact_dict)
+		setd2_mutation_rate[sample] = mutation_impact
+	return setd2_mutation_rate
+
 class Gene_expr:
 	def __init__(self, name, tumor, tumor_num, tumor_setd2, tumor_setd2_num, normal, normal_num):
 		self.name = name
@@ -167,17 +281,41 @@ class Gene_expr:
 		self.normal = normal
 		self.normal_num = normal_num
 
-def process_gene_expression_file(gene_expression_fn, sample_classification_fn):
+class Sample_type(Enum):
+	norma = 0
+	tumor_wild_type = 1
+	tumor_unclassified = 2
+	tumor_setd2 = 3
+
+def process_gene_expression_file(gene_expression_fn, maf_dir):
 	gene_expression = {}
 	fin = open(gene_expression_fn)
-	header = fin.readline()
+	sample_classification = {}
+	sample_names = fin.readline().split('\t')[1:]
+	setd2_mutation_rates = get_setd2_mutation_rate(maf_dir, sample_names)
+	# barcodes https://wiki.nci.nih.gov/display/TCGA/TCGA+Barcode
+	# code tables: https://tcga-data.nci.nih.gov/datareports/codeTablesReport.htm?codeTable=sample%20type
+	sample_type = [int(s.split('-')[3][:2]) for s in sample_names]
+	for i in xrange(len(sample_type)):
+		if (sample_type[i] >= 1) and (sample_type[i] <= 9): # tumor
+			if setd2_mutation_rates.has_key(sample_names[i]):
+				if setd2_mutation_rates[sample_names[i]] == Impact.high:
+					sample_classification[sample_names[i]] = Sample_type.tumor_setd2
+				elif setd2_mutation_rates[sample_names[i]] == Impact.no:
+					sample_classification[sample_names[i]] = Sample_type.tumor_wild_type
+				else:
+					sample_classification[sample_names[i]] = Sample_type.tumor_unclassified
+		elif (sample_type[i] >= 10) and (sample_type[i] <= 19): # norma
+			sample_classification[sample_names[i]] = Sample_type.norma
+	print sample_classification
 	fin.readline()
 	for line in fin:
 		pass
+	fin.close()
 	return gene_expression
 
-def get_gene_expression(gene_expression_fn, exon_to_genes, pos, sample_classification_fn):
-	gene_expression = process_gene_expression_file(gene_expression_fn, sample_classification_fn)
+def get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir):
+	gene_expression = process_gene_expression_file(gene_expression_fn, maf_dir)
 	return
 
 if __name__ == '__main__':
@@ -214,6 +352,10 @@ if __name__ == '__main__':
 				gene_expression_fn = os.path.join(d, elem)
 		if not (gene_expression_fn):
 			continue
-		sample_classification_fn = os.path.join(d, os.path.basename(d) + '_sample_classification.txt') # generated on step 2
-		gene_expression = get_gene_expression(gene_expression_fn, exon_to_genes, pos, sample_classification_fn)
+		for elem in os.listdir(d):
+			if 'Mutation_Packager_Oncotated_Raw_Calls' in elem:
+				maf_dir = os.path.join(d, elem)
+		if not os.path.exists(maf_dir):
+			print 'no such dir:', maf_dir
+		gene_expression = get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir)
 

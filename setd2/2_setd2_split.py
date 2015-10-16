@@ -127,7 +127,7 @@ def get_setd2_mutation_rate(maf_dir, sample_names):
 		setd2_mutation_rate[sample] = mutation_impact
 	return setd2_mutation_rate
 
-def compute(psi_filename, maf_dir, sample_type_f_out):
+def compute(psi_filename, maf_dir):
 	inf = open(psi_filename)
 	sample_names = [s.strip() for s in inf.readline().split()[2:]]
 	setd2_mutation_rates = get_setd2_mutation_rate(maf_dir, sample_names)
@@ -142,8 +142,6 @@ def compute(psi_filename, maf_dir, sample_type_f_out):
 		pos.append(line.split()[0])
 	inf.close()
 
-	sample_type_f_out = open(sample_type_f_out, 'w')
-
 	tumor_setd2_broken_num = 0
 	tumor_num = 0
 	normal_num = 0
@@ -151,8 +149,6 @@ def compute(psi_filename, maf_dir, sample_type_f_out):
 	tumor_setd2_broken_psi_spliced_average = []
 	tumor_psi_spliced_average = []
 	normal_psi_spliced_average = []
-	
-	sample_type_filled = False
 	for elem in data:
 		tumor_setd2_broken_psi_cur = []
 		tumor_psi_cur = []
@@ -162,21 +158,10 @@ def compute(psi_filename, maf_dir, sample_type_f_out):
 				if setd2_mutation_rates.has_key(sample_names[i]):
 					if setd2_mutation_rates[sample_names[i]] == Impact.high:
 						tumor_setd2_broken_psi_cur.append(elem.psi[i])
-						if not sample_type_filled:
-							sample_type_f_out.write(sample_names[i] + '\ttumor_setd2\n')
 					elif setd2_mutation_rates[sample_names[i]] == Impact.no:
 						tumor_psi_cur.append(elem.psi[i])
-						if not sample_type_filled:
-							sample_type_f_out.write(sample_names[i] + '\ttumor_wild_type\n')
-					else:
-						if not sample_type_filled:
-							sample_type_f_out.write(sample_names[i] + '\ttumor_unclassified\n')
 			elif (sample_type[i] >= 10) and (sample_type[i] <= 19): # norma
 				normal_psi_cur.append(elem.psi[i])
-				if not sample_type_filled:
-					sample_type_f_out.write(sample_names[i] + '\tnorma\n')
-		sample_type_filled = True
-		sample_type_f_out.close()
 		tumor_setd2_broken_num = len(tumor_setd2_broken_psi_cur)
 		tumor_num = len(tumor_psi_cur)
 		normal_num = len(normal_psi_cur)
@@ -224,9 +209,7 @@ if __name__ == '__main__':
 			print 'no such file:', psi_filename
 			continue
 		
-		sample_file_f_out = os.path.join(d, os.path.basename(d) + '_sample_classification.txt')
-		
-		(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average) = compute(psi_filename, maf_dir, sample_file_f_out)
+		(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average) = compute(psi_filename, maf_dir)
 
 		out_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
 		
