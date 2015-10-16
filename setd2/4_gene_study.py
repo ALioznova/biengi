@@ -96,12 +96,12 @@ def parse_genes_file(genes_file):
 				if not exon_dict[(exons.chr_name, exons.strand)].has_key((exons.begs[i], exons.ends[i])):
 					exon_dict[(exons.chr_name, exons.strand)][(exons.begs[i], exons.ends[i])] = Set()
 				exon_dict[(exons.chr_name, exons.strand)][(exons.begs[i], exons.ends[i])].add('|'.join(name.split('|')[:2]))
-				# filling interval_trees:
+				# filling interval_trees for annotated exons:
 				interval_trees[(exons.chr_name, exons.strand)][exons.begs[i] : exons.ends[i]] = '|'.join(name.split('|')[:2])
 
 	return (genes_data, exon_dict, interval_trees)
 
-def get_exons_names(exon_dict, interval_trees, pos):
+def exon_to_gene_names(exon_dict, interval_trees, pos):
 	exon_names = {}
 	for p in pos:
 		if not exon_names.has_key((p.chr_name, p.strand)):
@@ -116,6 +116,40 @@ def get_exons_names(exon_dict, interval_trees, pos):
 					exon_names[(p.chr_name, p.strand)][(p.end1, p.beg2)] = left_genes.intersection(right_genes)
 	return exon_names
 
+def get_dist_exon_gene_beg(exon_to_genes, genes_data, pos_rec):
+	def get_overlap(a, b):
+		return max(0, min(a[1], b[1]) - max(a[0], b[0]))
+
+	exon_chr = pos_rec.chr_name
+	exon_strand = pos_rec.strand
+	exon_beg = pos_rec.end1
+	exon_end = pos_rec.beg2
+	if not exon_to_genes[(exon_chr, exon_strand)].has_key((exon_beg, exon_end)):
+		return []
+	exon_genes = list(exon_to_genes[(exon_chr, exon_strand)][(exon_beg, exon_end)])
+	dist= []
+	for exon_gene in exon_genes:
+		for gene in genes_data[exon_gene]:
+			if gene.exons.chr_name != exon_chr:
+				continue
+			for i in xrange(len(gene.exons.begs)):
+				# if there is no intersection with exon_beg, exon_end => it is other exon's locus
+				ge_beg = gene.exons.begs[i]
+				ge_end = gene.exons.ends[i]
+				if get_overlap((ge_beg, ge_end), (exon_beg, exon_end)) != 0:
+					for loc in gene.locus:
+						if loc.chr_name != gene.exons.chr_name:
+							continue
+						if get_overlap((loc.beg, loc.end), (ge_beg, ge_end)) != 0:
+							if loc.strand == exon_strand:
+								if exon_beg - loc.beg < 0 or exon_beg - loc.beg > loc.end - loc.beg:
+									continue
+								dist.append(exon_beg - loc.beg)
+							else:
+								if loc.end - exon_end < 0 or loc.end - exon_end > loc.end - loc.beg:
+									continue
+								dist.append(loc.end - exon_end)
+	return dist
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -141,7 +175,10 @@ if __name__ == '__main__':
 		print 'processing', os.path.basename(d)
 		in_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
 		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
-		exon_names = get_exons_names(exon_dict, interval_trees, pos)
+		exon_to_genes = exon_to_gene_names(exon_dict, interval_trees, pos)
+		
+		for i in xrange(len(pos)):
+			gene_beg_dist = get_dist_exon_gene_beg(exon_to_genes, genes_data, pos[i])
 
 		gene_expression_fn = None
 		for elem in os.listdir(d):
