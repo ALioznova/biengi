@@ -423,8 +423,6 @@ if __name__ == '__main__':
 				new_line += (str(dst) + ',')
 			if len(gene_beg_dist[i]) != 0:
 				new_line = new_line[:-1]
-			else:
-				new_line != 'nan'
 			new_line += '\t'
 			for expr in tumor_setd2_gene_expr[i]:
 				new_line += (str(expr) + ',')
