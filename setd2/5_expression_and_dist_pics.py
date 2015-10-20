@@ -57,6 +57,28 @@ def prepare_data_for_plot(x_arr_of_arr, y_arr):
 		y.append(y_arr[i])
 	return (x, y) 
 
+def prepare_data_for_plot_delta(x_arr_of_arr, y_arr1, y_arr2):
+	only_nan1 = True
+	for elem in y_arr1:
+		if ~numpy.isnan(elem):
+			only_nan1 = False
+			break
+	only_nan2 = True
+	for elem in y_arr2:
+		if ~numpy.isnan(elem):
+			only_nan2 = False
+			break
+	if only_nan1 or only_nan2:
+		return ([],[])
+	x = []
+	y = []
+	for i in xrange(len(y_arr1)):
+		if len(x_arr_of_arr[i]) != 1:
+			continue
+		x.append(x_arr_of_arr[i][0])
+		y.append(abs(y_arr1[i] - y_arr2[i]))
+	return (x, y) 
+
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
 		print 'Usage:', sys.argv[0], '-d <data directory> -p <pictures directory>'
@@ -73,6 +95,8 @@ if __name__ == '__main__':
 		os.mkdir(os.path.join(pics_dir, 'expression'))
 	if not os.path.exists(os.path.join(pics_dir, 'distance')):
 		os.mkdir(os.path.join(pics_dir, 'distance'))
+	if not os.path.exists(os.path.join(pics_dir, 'distance_delta')):
+		os.mkdir(os.path.join(pics_dir, 'distance_delta'))
 
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
@@ -85,6 +109,7 @@ if __name__ == '__main__':
 
 		expr_path = os.path.join(os.path.join(pics_dir, 'expression'), os.path.basename(d) + '_expr.png')
 		dist_path = os.path.join(os.path.join(pics_dir, 'distance'), os.path.basename(d) + '_dist.png')
+		dist_delta_path = os.path.join(os.path.join(pics_dir, 'distance_delta'), os.path.basename(d) + '_dist_delta.png')
 
 		fig_dist = plt.figure()
 		plt.xscale('log')
@@ -98,6 +123,18 @@ if __name__ == '__main__':
 		plt.legend(loc='best')
 		fig_dist.savefig(dist_path)
 		plt.close(fig_dist)
+
+		fig_dist_delta = plt.figure()
+		plt.xscale('log')
+		(x1, y1) = prepare_data_for_plot_delta(dist, tumor_psi, normal_psi)
+		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'abs(tumor-norm)')
+		(x2, y2) = prepare_data_for_plot_delta(dist, tumor_setd2_psi, normal_psi)
+		plt.plot(x2, y2, marker='.', color='r', ls='', label = 'abs(tumor_setd2-norm)')
+		plt.title('delta PSI vs distance, ' + os.path.basename(d))
+		plt.legend(loc='best')
+		if len(x1) != 0 or len(x2) != 0:
+			fig_dist_delta.savefig(dist_delta_path)
+		plt.close(fig_dist_delta)
 
 		fig_expr = plt.figure()
 		plt.xscale('log')
