@@ -318,6 +318,8 @@ def process_gene_expression_file(gene_expression_fn, maf_dir):
 	gene_expression = {}
 	for line in fin:
 		gene_name = line.split('\t')[0]
+		if gene_name.endswith('_calculated'):
+			gene_name = gene_name[:-len('_calculated')]
 		data = line.split('\t')[1:]
 		tumor_setd2_num = 0
 		tumor_num = 0
@@ -404,6 +406,7 @@ if __name__ == '__main__':
 		gene_beg_dist = get_gene_dist(exon_to_genes, genes_data, pos)
 
 		gene_expression_fn = None
+		(tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr) = (None, None, None)
 		for elem in os.listdir(d):
 			if 'gene_expression' in elem:
 				gene_expression_fn = os.path.join(d, elem)
@@ -423,21 +426,24 @@ if __name__ == '__main__':
 				new_line += (str(dst) + ',')
 			if len(gene_beg_dist[i]) != 0:
 				new_line = new_line[:-1]
-			new_line += '\t'
-			for expr in tumor_setd2_gene_expr[i]:
-				new_line += (str(expr) + ',')
-			if len(tumor_setd2_gene_expr[i]) != 0:
-				new_line = new_line[:-1]
-			new_line += '\t'
-			for expr in tumor_gene_expr[i]:
-				new_line += (str(expr) + ',')
-			if len(tumor_gene_expr[i]) != 0:
-				new_line = new_line[:-1]
-			new_line += '\t'
-			for expr in normal_gene_expr[i]:
-				new_line += (str(expr) + ',')
-			if len(normal_gene_expr[i]) != 0:
-				new_line = new_line[:-1]
+			if gene_expression_fn:
+				new_line += '\t'
+				for expr in tumor_setd2_gene_expr[i]:
+					new_line += (str(expr) + ',')
+				if len(tumor_setd2_gene_expr[i]) != 0:
+					new_line = new_line[:-1]
+				new_line += '\t'
+				for expr in tumor_gene_expr[i]:
+					new_line += (str(expr) + ',')
+				if len(tumor_gene_expr[i]) != 0:
+					new_line = new_line[:-1]
+				new_line += '\t'
+				for expr in normal_gene_expr[i]:
+					new_line += (str(expr) + ',')
+				if len(normal_gene_expr[i]) != 0:
+					new_line = new_line[:-1]
+			else:
+				new_line += '\t\t\t'
 			new_line += '\n'
 			fout.write(new_line)
 
