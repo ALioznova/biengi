@@ -40,26 +40,22 @@ def read_expr_dist_data(in_fn):
 	in_f.close()
 	return (dist, tumor_setd2, tumor, normal)
 
-def prepare_data_for_plot(tumor_setd2_psi, tumor_psi, normal_psi, dist, tumor_setd2_expr, tumor_expr, normal_expr):
-	tumor_setd2_psi_plot = []
-	tumor_psi_plot = []
-	normal_psi_plot = []
-	dist_plot = []
-	tumor_setd2_expr_plot = []
-	tumor_expr_plot = []
-	normal_expr_plot = []
-	for i in xrange(len(normal_psi)):
-		if len(dist[i]) != 1 or len(normal_expr[i]) != 1:
+def prepare_data_for_plot(x_arr_of_arr, y_arr):
+	only_nan = True
+	for elem in y_arr:
+		if ~numpy.isnan(elem):
+			only_nan = False
+			break
+	if only_nan:
+		return ([],[])
+	x = []
+	y = []
+	for i in xrange(len(y_arr)):
+		if len(x_arr_of_arr[i]) != 1:
 			continue
-		tumor_setd2_psi_plot.append(tumor_setd2_psi[i])
-		tumor_psi_plot.append(tumor_psi[i])
-		normal_psi_plot.append(normal_psi[i])
-		dist_plot.append(dist[i][0])
-		tumor_setd2_expr_plot.append(tumor_setd2_expr[i][0])
-		tumor_expr_plot.append(tumor_expr[i][0])
-		normal_expr_plot.append(normal_expr[i][0])
-	return (tumor_setd2_psi_plot, tumor_psi_plot, normal_psi_plot, dist_plot, tumor_setd2_expr_plot, tumor_expr_plot, normal_expr_plot)
-
+		x.append(x_arr_of_arr[i][0])
+		y.append(y_arr[i])
+	return (x, y) 
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -87,27 +83,31 @@ if __name__ == '__main__':
 		expr_dist_fn = os.path.join(d, os.path.basename(d) + '_expression_and_dist.txt')
 		(dist, tumor_setd2_expr, tumor_expr, normal_expr) = read_expr_dist_data(expr_dist_fn)
 
-		(tumor_setd2_psi, tumor_psi, normal_psi, dist, tumor_setd2_expr, tumor_expr, normal_expr) = prepare_data_for_plot(tumor_setd2_psi, tumor_psi, normal_psi, dist, tumor_setd2_expr, tumor_expr, normal_expr)
-
 		expr_path = os.path.join(os.path.join(pics_dir, 'expression'), os.path.basename(d) + '_expr.png')
 		dist_path = os.path.join(os.path.join(pics_dir, 'distance'), os.path.basename(d) + '_dist.png')
 
 		fig_dist = plt.figure()
 		plt.xscale('log')
-		plt.plot(dist, tumor_setd2_psi, marker='.', color='r', ls='', label = 'tumor_setd2')
-		plt.plot(dist, tumor_psi, marker='.', color='b', ls='', label = 'tumor')
-		plt.plot(dist, normal_psi, marker='.', color='g', ls='', label = 'normal')
-		plt.title('PSI vs dist ' + os.path.basename(d))
+		(x1, y1) = prepare_data_for_plot(dist, tumor_setd2_psi)
+		plt.plot(x1, y1, marker='.', color='r', ls='', label = 'tumor_setd2')
+		(x2, y2) = prepare_data_for_plot(dist, tumor_psi)
+		plt.plot(x2, y2, marker='.', color='b', ls='', label = 'tumor')
+		(x3, y3) = prepare_data_for_plot(dist, normal_psi)
+		plt.plot(x3, y3, marker='.', color='g', ls='', label = 'normal')
+		plt.title('PSI vs distance, ' + os.path.basename(d))
 		plt.legend(loc='best')
 		fig_dist.savefig(dist_path)
 		plt.close(fig_dist)
 
 		fig_expr = plt.figure()
 		plt.xscale('log')
-		plt.plot(tumor_setd2_expr, tumor_setd2_psi, marker='.', color='r', ls='', label = 'tumor_setd2')
-		plt.plot(tumor_expr, tumor_psi, marker='.', color='b', ls='', label = 'tumor')
-		plt.plot(normal_expr, normal_psi, marker='.', color='g', ls='', label = 'normal')
-		plt.title('PSI vs expesstion ' + os.path.basename(d))
+		(x1, y1) = prepare_data_for_plot(tumor_setd2_expr, tumor_setd2_psi)
+		plt.plot(x1, y1, marker='.', color='r', ls='', label = 'tumor_setd2')
+		(x2, y2) = prepare_data_for_plot(tumor_expr, tumor_psi)
+		plt.plot(x2, y2, marker='.', color='b', ls='', label = 'tumor')
+		(x3, y3) = prepare_data_for_plot(normal_expr, normal_psi)
+		plt.plot(x3, y3, marker='.', color='g', ls='', label = 'normal')
+		plt.title('PSI vs expression, ' + os.path.basename(d))
 		plt.legend(loc='best')
 		fig_expr.savefig(expr_path)
 		plt.close(fig_expr)
