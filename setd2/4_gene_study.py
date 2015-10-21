@@ -129,9 +129,10 @@ def get_dist_exon_gene_beg(exon_to_genes, genes_data, pos_rec):
 	exon_beg = pos_rec.end1
 	exon_end = pos_rec.beg2
 	if not exon_to_genes[(exon_chr, exon_strand)].has_key((exon_beg, exon_end)):
-		return []
+		return ([] ,[])
 	exon_genes = list(exon_to_genes[(exon_chr, exon_strand)][(exon_beg, exon_end)])
-	dist= []
+	dist_bp = []
+	dist_perc = []
 	for exon_gene in exon_genes:
 		for gene in genes_data[exon_gene]:
 			if gene.exons.chr_name != exon_chr:
@@ -148,20 +149,27 @@ def get_dist_exon_gene_beg(exon_to_genes, genes_data, pos_rec):
 							if loc.strand == True and exon_strand == True:
 								if exon_beg - loc.beg < 0 or exon_beg - loc.beg > loc.end - loc.beg:
 									continue
-								dist.append(exon_beg - loc.beg)
+								dist_bp.append(exon_beg - loc.beg)
+								dist_perc.append(float(exon_beg - loc.beg)/(loc.end - loc.beg))
 							elif loc.strand == False and exon_strand == False:
 								if loc.end - exon_end < 0 or loc.end - exon_end > loc.end - loc.beg:
 									continue
-								dist.append(loc.end - exon_end)
+								dist_bp.append(loc.end - exon_end)
+								dist_perc.append(float(loc.end - exon_end)/(loc.end - loc.beg))
 							else:
 								continue
-	return dist
+	return (dist_bp, dist_perc)
 
 def get_gene_dist(exon_to_genes, genes_data, pos):
-	gene_beg_dist = []
+	gene_beg_dist_bp = []
+	gene_beg_dist_perc = []
 	for i in xrange(len(pos)):
-		gene_beg_dist.append(list(Set(get_dist_exon_gene_beg(exon_to_genes, genes_data, pos[i]))))
-	return gene_beg_dist
+		(dist_bp, dist_perc) = get_dist_exon_gene_beg(exon_to_genes, genes_data, pos[i])
+		dist_bp = list(Set(dist_bp))
+		dist_perc = list(Set(dist_perc))
+		gene_beg_dist_bp.append(dist_bp)
+		gene_beg_dist_perc.append(dist_perc)
+	return (gene_beg_dist_bp, gene_beg_dist_perc)
 
 class OrderedEnum(Enum):
 	 def __ge__(self, other):
@@ -328,15 +336,15 @@ def process_gene_expression_file(gene_expression_fn, maf_dir):
 		tumor_val = 0
 		normal_val = 0
 		for i in xrange(len(data)):
-			if i % 3 == 0:
+			if i % 3 == 2:
 				if sample_classification[sample_names[i]] == Sample_type.tumor_setd2:
-					tumor_setd2_val += (int(data[i]))
+					tumor_setd2_val += (float(data[i]))
 					tumor_setd2_num += 1
 				elif sample_classification[sample_names[i]] == Sample_type.tumor_wild_type:
-					tumor_val += (int(data[i]))
+					tumor_val += (float(data[i]))
 					tumor_num += 1
 				elif sample_classification[sample_names[i]] == Sample_type.norma:
-					normal_val += (int(data[i]))
+					normal_val += (float(data[i]))
 					normal_num += 1
 				else:
 					continue
@@ -403,7 +411,7 @@ if __name__ == '__main__':
 		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
 		exon_to_genes = exon_to_gene_names(exon_dict, interval_trees, pos)
 
-		gene_beg_dist = get_gene_dist(exon_to_genes, genes_data, pos)
+		(gene_beg_dist_bp, gene_beg_dist_perc) = get_gene_dist(exon_to_genes, genes_data, pos)
 
 		gene_expression_fn = None
 		(tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr) = (None, None, None)
@@ -419,12 +427,17 @@ if __name__ == '__main__':
 			(tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr) = get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir)
 
 		fout = open(os.path.join(d, os.path.basename(d) + '_expression_and_dist.txt'), 'w')
-		fout.write('Pos:\tGene_dist:\tExpr_tumorsetd2:\tExpr_tumor_wt:\tExpr_normal:\n')
+		fout.write('Pos:\tGene_dist_bp:\tGene_dist_perc:\tExpr_tumorsetd2:\tExpr_tumor_wt:\tExpr_normal:\n')
 		for i in xrange(len(pos)):
 			new_line = pos[i].desc + '\t'
-			for dst in gene_beg_dist[i]:
+			for dst in gene_beg_dist_bp[i]:
 				new_line += (str(dst) + ',')
-			if len(gene_beg_dist[i]) != 0:
+			if len(gene_beg_dist_bp[i]) != 0:
+				new_line = new_line[:-1]
+			new_line += '\t'
+			for dst in gene_beg_dist_perc[i]:
+				new_line += (str(dst) + ',')
+			if len(gene_beg_dist_perc[i]) != 0:
 				new_line = new_line[:-1]
 			if gene_expression_fn:
 				new_line += '\t'

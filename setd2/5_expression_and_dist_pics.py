@@ -28,17 +28,19 @@ def read_psi_data(in_fn):
 def read_expr_dist_data(in_fn):
 	in_f = open(in_fn)
 	header_line = in_f.readline()
-	dist = []
+	dist_bp = []
+	dist_perc = []
 	tumor_setd2 = []
 	tumor = []
 	normal = []
 	for line in in_f:
-		dist.append([int(el) for el in line.split('\t')[1].split(',') if (el != '' and el != 'nan')])
-		tumor_setd2.append([float(el) for el in line.split('\t')[2].split(',') if el != '' and el != 'nan'])
-		tumor.append([float(el) for el in line.split('\t')[3].split(',') if el != '' and el != 'nan'])
-		normal.append([float(el) for el in line.split('\t')[4].strip().split(',') if el != '' and el != 'nan'])
+		dist_bp.append([int(el) for el in line.split('\t')[1].split(',') if (el != '' and el != 'nan')])
+		dist_perc.append([float(el) for el in line.split('\t')[2].split(',') if (el != '' and el != 'nan')])
+		tumor_setd2.append([float(el) for el in line.split('\t')[3].split(',') if el != '' and el != 'nan'])
+		tumor.append([float(el) for el in line.split('\t')[4].split(',') if el != '' and el != 'nan'])
+		normal.append([float(el) for el in line.split('\t')[5].strip().split(',') if el != '' and el != 'nan'])
 	in_f.close()
-	return (dist, tumor_setd2, tumor, normal)
+	return (dist_bp, dist_perc, tumor_setd2, tumor, normal)
 
 def prepare_data_for_plot(x_arr_of_arr, y_arr):
 	only_nan = True
@@ -50,7 +52,7 @@ def prepare_data_for_plot(x_arr_of_arr, y_arr):
 		return ([],[])
 	x = []
 	y = []
-	for i in xrange(len(y_arr)):
+	for i in xrange(len(y_arr)): # ignore exons corresponding to multiple genes
 		if len(x_arr_of_arr[i]) != 1:
 			continue
 		x.append(x_arr_of_arr[i][0])
@@ -93,10 +95,14 @@ if __name__ == '__main__':
 
 	if not os.path.exists(os.path.join(pics_dir, 'expression')):
 		os.mkdir(os.path.join(pics_dir, 'expression'))
-	if not os.path.exists(os.path.join(pics_dir, 'distance')):
-		os.mkdir(os.path.join(pics_dir, 'distance'))
-	if not os.path.exists(os.path.join(pics_dir, 'distance_delta')):
-		os.mkdir(os.path.join(pics_dir, 'distance_delta'))
+	if not os.path.exists(os.path.join(pics_dir, 'distance_bp')):
+		os.mkdir(os.path.join(pics_dir, 'distance_bp'))
+	if not os.path.exists(os.path.join(pics_dir, 'distance_bp_delta')):
+		os.mkdir(os.path.join(pics_dir, 'distance_bp_delta'))
+	if not os.path.exists(os.path.join(pics_dir, 'distance_perc')):
+		os.mkdir(os.path.join(pics_dir, 'distance_perc'))
+	if not os.path.exists(os.path.join(pics_dir, 'distance_perc_delta')):
+		os.mkdir(os.path.join(pics_dir, 'distance_perc_delta'))
 
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
@@ -105,36 +111,63 @@ if __name__ == '__main__':
 		psi_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
 		(tumor_setd2_broken_num, tumor_setd2_psi, tumor_num, tumor_psi, normal_num, normal_psi) = read_psi_data(psi_fn)
 		expr_dist_fn = os.path.join(d, os.path.basename(d) + '_expression_and_dist.txt')
-		(dist, tumor_setd2_expr, tumor_expr, normal_expr) = read_expr_dist_data(expr_dist_fn)
+		(dist_bp, dist_perc, tumor_setd2_expr, tumor_expr, normal_expr) = read_expr_dist_data(expr_dist_fn)
 
 		expr_path = os.path.join(os.path.join(pics_dir, 'expression'), os.path.basename(d) + '_expr.png')
-		dist_path = os.path.join(os.path.join(pics_dir, 'distance'), os.path.basename(d) + '_dist.png')
-		dist_delta_path = os.path.join(os.path.join(pics_dir, 'distance_delta'), os.path.basename(d) + '_dist_delta.png')
+		dist_bp_path = os.path.join(os.path.join(pics_dir, 'distance_bp'), os.path.basename(d) + '_dist_bp.png')
+		dist_bp_delta_path = os.path.join(os.path.join(pics_dir, 'distance_bp_delta'), os.path.basename(d) + '_dist_bp_delta.png')
+		dist_perc_path = os.path.join(os.path.join(pics_dir, 'distance_perc'), os.path.basename(d) + '_dist_perc.png')
+		dist_perc_delta_path = os.path.join(os.path.join(pics_dir, 'distance_perc_delta'), os.path.basename(d) + '_dist_perc_delta.png')
 
-		fig_dist = plt.figure()
+		fig_dist_bp = plt.figure()
 		plt.xscale('log')
-		(x1, y1) = prepare_data_for_plot(dist, tumor_psi)
+		(x1, y1) = prepare_data_for_plot(dist_bp, tumor_psi)
 		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'tumor')
-		(x2, y2) = prepare_data_for_plot(dist, normal_psi)
+		(x2, y2) = prepare_data_for_plot(dist_bp, normal_psi)
 		plt.plot(x2, y2, marker='.', color='g', ls='', label = 'normal')
-		(x3, y3) = prepare_data_for_plot(dist, tumor_setd2_psi)
+		(x3, y3) = prepare_data_for_plot(dist_bp, tumor_setd2_psi)
 		plt.plot(x3, y3, marker='.', color='r', ls='', label = 'tumor_setd2')
-		plt.title('PSI vs distance, ' + os.path.basename(d))
+		plt.title('PSI vs distance in bp, ' + os.path.basename(d))
 		plt.legend(loc='best')
-		fig_dist.savefig(dist_path)
-		plt.close(fig_dist)
+		fig_dist_bp.savefig(dist_bp_path)
+		plt.close(fig_dist_bp)
 
-		fig_dist_delta = plt.figure()
+		fig_dist_bp_delta = plt.figure()
 		plt.xscale('log')
-		(x1, y1) = prepare_data_for_plot_delta(dist, tumor_psi, normal_psi)
+		(x1, y1) = prepare_data_for_plot_delta(dist_bp, tumor_psi, normal_psi)
 		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'abs(tumor-norm)')
-		(x2, y2) = prepare_data_for_plot_delta(dist, tumor_setd2_psi, normal_psi)
+		(x2, y2) = prepare_data_for_plot_delta(dist_bp, tumor_setd2_psi, normal_psi)
 		plt.plot(x2, y2, marker='.', color='r', ls='', label = 'abs(tumor_setd2-norm)')
-		plt.title('delta PSI vs distance, ' + os.path.basename(d))
+		plt.title('delta PSI vs distance in bp, ' + os.path.basename(d))
 		plt.legend(loc='best')
 		if len(x1) != 0 or len(x2) != 0:
-			fig_dist_delta.savefig(dist_delta_path)
-		plt.close(fig_dist_delta)
+			fig_dist_bp_delta.savefig(dist_bp_delta_path)
+		plt.close(fig_dist_bp_delta)
+
+		fig_dist_perc = plt.figure()
+		plt.xscale('log')
+		(x1, y1) = prepare_data_for_plot(dist_perc, tumor_psi)
+		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'tumor')
+		(x2, y2) = prepare_data_for_plot(dist_perc, normal_psi)
+		plt.plot(x2, y2, marker='.', color='g', ls='', label = 'normal')
+		(x3, y3) = prepare_data_for_plot(dist_perc, tumor_setd2_psi)
+		plt.plot(x3, y3, marker='.', color='r', ls='', label = 'tumor_setd2')
+		plt.title('PSI vs distance in perc, ' + os.path.basename(d))
+		plt.legend(loc='best')
+		fig_dist_perc.savefig(dist_perc_path)
+		plt.close(fig_dist_perc)
+
+		fig_dist_perc_delta = plt.figure()
+		plt.xscale('log')
+		(x1, y1) = prepare_data_for_plot_delta(dist_perc, tumor_psi, normal_psi)
+		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'abs(tumor-norm)')
+		(x2, y2) = prepare_data_for_plot_delta(dist_perc, tumor_setd2_psi, normal_psi)
+		plt.plot(x2, y2, marker='.', color='r', ls='', label = 'abs(tumor_setd2-norm)')
+		plt.title('delta PSI vs distance in perc, ' + os.path.basename(d))
+		plt.legend(loc='best')
+		if len(x1) != 0 or len(x2) != 0:
+			fig_dist_perc_delta.savefig(dist_perc_delta_path)
+		plt.close(fig_dist_perc_delta)
 
 		fig_expr = plt.figure()
 		plt.xscale('log')
