@@ -6,6 +6,7 @@ import argparse
 import numpy
 import pylab
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from scipy import stats
 from scipy.stats import mstats
 
@@ -119,14 +120,74 @@ if __name__ == '__main__':
 		dist_perc_path = os.path.join(os.path.join(pics_dir, 'distance_perc'), os.path.basename(d) + '_dist_perc.png')
 		dist_perc_delta_path = os.path.join(os.path.join(pics_dir, 'distance_perc_delta'), os.path.basename(d) + '_dist_perc_delta.png')
 
+		expr_bin_path = os.path.join(os.path.join(pics_dir, 'expression'), os.path.basename(d) + '_expr_bin.png')
+		dist_bp_bin_path = os.path.join(os.path.join(pics_dir, 'distance_bp'), os.path.basename(d) + '_dist_bp_bin.png')
+		dist_bp_delta_bin_path = os.path.join(os.path.join(pics_dir, 'distance_bp_delta'), os.path.basename(d) + '_dist_bp_delta_bin.png')
+		dist_perc_bin_path = os.path.join(os.path.join(pics_dir, 'distance_perc'), os.path.basename(d) + '_dist_perc_bin.png')
+		dist_perc_delta_bin_path = os.path.join(os.path.join(pics_dir, 'distance_perc_delta'), os.path.basename(d) + '_dist_perc_delta_bin.png')
+
+
+		# expression
+		fig_expr = plt.figure()
+		plt.xscale('log')
+		(x1, y1) = prepare_data_for_plot(tumor_expr, tumor_psi)
+		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'tumor', alpha=.5, ms=6)
+		(x2, y2) = prepare_data_for_plot(normal_expr, normal_psi)
+		plt.plot(x2, y2, marker='.', color='g', ls='', label = 'normal', alpha=.5, ms=6)
+		(x3, y3) = prepare_data_for_plot(tumor_setd2_expr, tumor_setd2_psi)
+		plt.plot(x3, y3, marker='.', color='r', ls='', label = 'tumor_setd2', alpha=.5, ms=6)
+		plt.title('PSI vs expression, ' + os.path.basename(d))
+		plt.legend(loc='best')
+		if len(x1) != 0 or len(x2) != 0 or len(x3) != 0:
+			fig_expr.savefig(expr_path)
+		plt.close(fig_expr)
+
+		# expression_bins
+		nbins = 10
+		data = numpy.concatenate([x1, x2, x3])
+		freq, bins = numpy.histogram(data, bins = nbins)
+		bins[-1] += 0.1 # intervals are open, we'll loose last value otherwise
+		ind1 = numpy.digitize(x1, bins)
+		ind2 = numpy.digitize(x2, bins)
+		ind3 = numpy.digitize(x3, bins)
+		y1_split = []
+		for i in xrange(1, nbins + 1):
+			y1_split.append([el for el in ([y1[j] for j in xrange(len(x1)) if ind1[j] == i]) if ~numpy.isnan(el)])
+		y2_split = []
+		for i in xrange(1, nbins + 1):
+			y2_split.append([el for el in ([y2[j] for j in xrange(len(x2)) if ind2[j] == i]) if ~numpy.isnan(el)])
+		y3_split = []
+		for i in xrange(1, nbins + 1):
+			y3_split.append([el for el in ([y3[j] for j in xrange(len(x3)) if ind3[j] == i]) if ~numpy.isnan(el)])
+		fig_expr_bin, axes = plt.subplots(nrows=1, ncols=nbins, sharey=True)
+		bin_num = 0
+		for ax in axes.flat:
+			ax.hist((y3_split[bin_num], y1_split[bin_num], y2_split[bin_num]), bins=15, normed=1, histtype='bar', color=['red', 'blue', 'chartreuse'], label=['Tumor setd2', 'Tumor', 'Normal'], orientation="horizontal")[0]
+			ax.get_xaxis().set_ticks([])
+			ax.set_xlabel('Title' + str(bin_num))
+			bin_num += 1
+		fig_expr_bin.suptitle('PSI for ' + os.path.basename(d), fontsize=14)
+
+		fig_expr_bin.subplots_adjust(bottom=0.25)
+		patches = [mpatches.Patch(color='red', label='Tumor setd2'), mpatches.Patch(color='blue', label='Tumor'), mpatches.Patch(color='chartreuse', label='Normal')]
+		plt.figlegend(handles=patches, labels=['Tumor setd2', 'Tumor', 'Normal'], loc = (0.1, 0.05))
+
+		pylab.show(fig_expr_bin)
+		fig_expr_bin.savefig(expr_bin_path)
+		plt.close(fig_expr_bin)
+
+		sys.exit(0)
+
+
+
 		fig_dist_bp = plt.figure()
 		plt.xscale('log')
 		(x1, y1) = prepare_data_for_plot(dist_bp, tumor_psi)
-		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'tumor')
+		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'tumor', alpha=.5, ms=6)
 		(x2, y2) = prepare_data_for_plot(dist_bp, normal_psi)
-		plt.plot(x2, y2, marker='.', color='g', ls='', label = 'normal')
+		plt.plot(x2, y2, marker='.', color='g', ls='', label = 'normal', alpha=.5, ms=6)
 		(x3, y3) = prepare_data_for_plot(dist_bp, tumor_setd2_psi)
-		plt.plot(x3, y3, marker='.', color='r', ls='', label = 'tumor_setd2')
+		plt.plot(x3, y3, marker='.', color='r', ls='', label = 'tumor_setd2', alpha=.5, ms=6)
 		plt.title('PSI vs distance in bp, ' + os.path.basename(d))
 		plt.legend(loc='best')
 		fig_dist_bp.savefig(dist_bp_path)
@@ -135,9 +196,9 @@ if __name__ == '__main__':
 		fig_dist_bp_delta = plt.figure()
 		plt.xscale('log')
 		(x1, y1) = prepare_data_for_plot_delta(dist_bp, tumor_psi, normal_psi)
-		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'abs(tumor-norm)')
+		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'abs(tumor-norm)', alpha=.5, ms=6)
 		(x2, y2) = prepare_data_for_plot_delta(dist_bp, tumor_setd2_psi, normal_psi)
-		plt.plot(x2, y2, marker='.', color='r', ls='', label = 'abs(tumor_setd2-norm)')
+		plt.plot(x2, y2, marker='.', color='r', ls='', label = 'abs(tumor_setd2-norm)', alpha=.5, ms=6)
 		plt.title('delta PSI vs distance in bp, ' + os.path.basename(d))
 		plt.legend(loc='best')
 		if len(x1) != 0 or len(x2) != 0:
@@ -145,42 +206,27 @@ if __name__ == '__main__':
 		plt.close(fig_dist_bp_delta)
 
 		fig_dist_perc = plt.figure()
-		plt.xscale('log')
 		(x1, y1) = prepare_data_for_plot(dist_perc, tumor_psi)
-		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'tumor')
+		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'tumor', alpha=.5, ms=6)
 		(x2, y2) = prepare_data_for_plot(dist_perc, normal_psi)
-		plt.plot(x2, y2, marker='.', color='g', ls='', label = 'normal')
+		plt.plot(x2, y2, marker='.', color='g', ls='', label = 'normal', alpha=.5, ms=6)
 		(x3, y3) = prepare_data_for_plot(dist_perc, tumor_setd2_psi)
-		plt.plot(x3, y3, marker='.', color='r', ls='', label = 'tumor_setd2')
+		plt.plot(x3, y3, marker='.', color='r', ls='', label = 'tumor_setd2', alpha=.5, ms=6)
 		plt.title('PSI vs distance in perc, ' + os.path.basename(d))
 		plt.legend(loc='best')
 		fig_dist_perc.savefig(dist_perc_path)
 		plt.close(fig_dist_perc)
 
 		fig_dist_perc_delta = plt.figure()
-		plt.xscale('log')
 		(x1, y1) = prepare_data_for_plot_delta(dist_perc, tumor_psi, normal_psi)
-		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'abs(tumor-norm)')
+		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'abs(tumor-norm)', alpha=.5, ms=6)
 		(x2, y2) = prepare_data_for_plot_delta(dist_perc, tumor_setd2_psi, normal_psi)
-		plt.plot(x2, y2, marker='.', color='r', ls='', label = 'abs(tumor_setd2-norm)')
+		plt.plot(x2, y2, marker='.', color='r', ls='', label = 'abs(tumor_setd2-norm)', alpha=.5, ms=6)
 		plt.title('delta PSI vs distance in perc, ' + os.path.basename(d))
 		plt.legend(loc='best')
 		if len(x1) != 0 or len(x2) != 0:
 			fig_dist_perc_delta.savefig(dist_perc_delta_path)
 		plt.close(fig_dist_perc_delta)
 
-		fig_expr = plt.figure()
-		plt.xscale('log')
-		(x1, y1) = prepare_data_for_plot(tumor_expr, tumor_psi)
-		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'tumor')
-		(x2, y2) = prepare_data_for_plot(normal_expr, normal_psi)
-		plt.plot(x2, y2, marker='.', color='g', ls='', label = 'normal')
-		(x3, y3) = prepare_data_for_plot(tumor_setd2_expr, tumor_setd2_psi)
-		plt.plot(x3, y3, marker='.', color='r', ls='', label = 'tumor_setd2')
-		plt.title('PSI vs expression, ' + os.path.basename(d))
-		plt.legend(loc='best')
-		if len(x1) != 0 or len(x2) != 0 or len(x3) != 0:
-			fig_expr.savefig(expr_path)
-		plt.close(fig_expr)
-
+		
 
