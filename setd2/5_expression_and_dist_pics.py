@@ -82,8 +82,17 @@ def prepare_data_for_plot_delta(x_arr_of_arr, y_arr1, y_arr2):
 		y.append(abs(y_arr1[i] - y_arr2[i]))
 	return (x, y) 
 
-def plot_points():
-	pass
+def plot_points(fig_path, plot_label, xscale, x1, y1, label1, color1, x2, y2, label2, color2, x3=[], y3=[], label3=None, color3=None):
+	fig = plt.figure()
+	plt.xscale(xscale)
+	plt.plot(x1, y1, marker='.', color=color1, ls='', label=label1, alpha=.5, ms=6)
+	plt.plot(x2, y2, marker='.', color=color2, ls='', label=label2, alpha=.5, ms=6)
+	plt.plot(x3, y3, marker='.', color=color3, ls='', label=label3, alpha=.5, ms=6)
+	plt.title(plot_label)
+	plt.legend(loc='best')
+	if len(x1) != 0 or len(x2) != 0 or len(x3) != 0:
+		fig.savefig(fig_path)
+	plt.close(fig)
 
 def plot_bins(fig_path, plot_label, nbins_x, nbins_y, y_lim, x1, y1, label1, color1, x2, y2, label2, color2, x3=[], y3=[], label3=None, color3=None):
 	data = numpy.concatenate([x1, x2, x3])
@@ -101,7 +110,7 @@ def plot_bins(fig_path, plot_label, nbins_x, nbins_y, y_lim, x1, y1, label1, col
 	y3_split = []
 	for i in xrange(1, nbins_x + 1):
 		y3_split.append([el for el in ([y3[j] for j in xrange(len(x3)) if ind3[j] == i]) if ~numpy.isnan(el)])
-	fig_expr_bin, axes = plt.subplots(nrows=1, ncols=nbins_x, sharey=True)
+	fig_bin, axes = plt.subplots(nrows=1, ncols=nbins_x, sharey=True)
 	bin_num = 0
 	for ax in axes.flat:
 		ax.hist((y1_split[bin_num], y2_split[bin_num], y3_split[bin_num]), bins=nbins_y, normed=1, histtype='bar', color=[color1, color2, color3], label=[label1, label2, label3], orientation="horizontal")[0]
@@ -109,12 +118,12 @@ def plot_bins(fig_path, plot_label, nbins_x, nbins_y, y_lim, x1, y1, label1, col
 		ax.set_xlabel("{0:.1f}".format(float(bins_x[bin_num] + bins_x[bin_num+1])/2))
 		ax.set_ylim(y_lim)
 		bin_num += 1
-	fig_expr_bin.suptitle(plot_label, fontsize=14)
-	fig_expr_bin.subplots_adjust(bottom=0.25)
+	fig_bin.suptitle(plot_label, fontsize=14)
+	fig_bin.subplots_adjust(bottom=0.25)
 	patches = [mpatches.Patch(color=color1, label=label1), mpatches.Patch(color=color2, label=label2), mpatches.Patch(color=color3, label=label3)]
 	plt.figlegend(handles=patches, labels=[label1, label2, label3], loc = (0.1, 0.05))
-	fig_expr_bin.savefig(fig_path, dpi=100)
-	plt.close(fig_expr_bin)
+	fig_bin.savefig(fig_path, dpi=100)
+	plt.close(fig_bin)
 
 
 if __name__ == '__main__':
@@ -163,24 +172,12 @@ if __name__ == '__main__':
 
 
 		# expression
-		fig_expr = plt.figure()
-		plt.xscale('log')
 		(x1, y1) = prepare_data_for_plot(tumor_expr, tumor_psi)
-		plt.plot(x1, y1, marker='.', color='b', ls='', label = 'tumor', alpha=.5, ms=6)
 		(x2, y2) = prepare_data_for_plot(normal_expr, normal_psi)
-		plt.plot(x2, y2, marker='.', color='g', ls='', label = 'normal', alpha=.5, ms=6)
 		(x3, y3) = prepare_data_for_plot(tumor_setd2_expr, tumor_setd2_psi)
-		plt.plot(x3, y3, marker='.', color='r', ls='', label = 'tumor_setd2', alpha=.5, ms=6)
-		plt.title('PSI vs expression, ' + os.path.basename(d))
-		plt.legend(loc='best')
-		if len(x1) != 0 or len(x2) != 0 or len(x3) != 0:
-			fig_expr.savefig(expr_path)
-		plt.close(fig_expr)
-
-#		ax.hist((y3_split[bin_num], y1_split[bin_num], y2_split[bin_num]), bins=nbins_y, normed=1, histtype='bar', color=['red', 'blue', 'chartreuse'], label=['Tumor setd2', 'Tumor', 'Normal'], orientation="horizontal")[0]
+		plot_points(expr_path, 'PSI vs expression, ' + os.path.basename(d), 'log', x3, y3, 'Tumor_setd2', 'red', x1, y1, 'Tumor', 'blue', x2, y2, 'Normal', 'chartreuse')
 
 		plot_bins(expr_bin_path, 'PSI for ' + os.path.basename(d), 10, 15, [0,1], x3, y3, 'Tumor_setd2', 'red', x1, y1, 'Tumor', 'blue', x2, y2, 'Normal', 'chartreuse')
-
 
 		# distance in bp
 		fig_dist_bp = plt.figure()
