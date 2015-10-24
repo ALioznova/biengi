@@ -145,8 +145,8 @@ if __name__ == '__main__':
 		# expression_bins
 		nbins = 10
 		data = numpy.concatenate([x1, x2, x3])
-		freq, bins = numpy.histogram(data, bins = nbins)
-		bins[-1] += 0.1 # intervals are open, we'll loose last value otherwise
+		bins = stats.mstats.mquantiles(data, numpy.linspace(0.0, 1.0, num=nbins+1, endpoint=True))
+		freq, _ = numpy.histogram(data, bins = bins)
 		ind1 = numpy.digitize(x1, bins)
 		ind2 = numpy.digitize(x2, bins)
 		ind3 = numpy.digitize(x3, bins)
@@ -164,7 +164,8 @@ if __name__ == '__main__':
 		for ax in axes.flat:
 			ax.hist((y3_split[bin_num], y1_split[bin_num], y2_split[bin_num]), bins=15, normed=1, histtype='bar', color=['red', 'blue', 'chartreuse'], label=['Tumor setd2', 'Tumor', 'Normal'], orientation="horizontal")[0]
 			ax.get_xaxis().set_ticks([])
-			ax.set_xlabel('Title' + str(bin_num))
+			ax.set_xlabel("{0:.1f}".format(float(bins[bin_num] + bins[bin_num+1])/2))
+			ax.set_ylim([0,1])
 			bin_num += 1
 		fig_expr_bin.suptitle('PSI for ' + os.path.basename(d), fontsize=14)
 
@@ -172,14 +173,10 @@ if __name__ == '__main__':
 		patches = [mpatches.Patch(color='red', label='Tumor setd2'), mpatches.Patch(color='blue', label='Tumor'), mpatches.Patch(color='chartreuse', label='Normal')]
 		plt.figlegend(handles=patches, labels=['Tumor setd2', 'Tumor', 'Normal'], loc = (0.1, 0.05))
 
-		pylab.show(fig_expr_bin)
-		fig_expr_bin.savefig(expr_bin_path)
+		fig_expr_bin.savefig(expr_bin_path, dpi=100)
 		plt.close(fig_expr_bin)
 
-		sys.exit(0)
-
-
-
+		# distance in bp
 		fig_dist_bp = plt.figure()
 		plt.xscale('log')
 		(x1, y1) = prepare_data_for_plot(dist_bp, tumor_psi)
