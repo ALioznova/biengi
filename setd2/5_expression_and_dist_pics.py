@@ -116,7 +116,7 @@ def plot_bins(fig_path, plot_label, nbins_x, nbins_y, y_lim, x1, y1, label1, col
 	y3_split = []
 	for i in xrange(1, nbins_x + 1):
 		y3_split.append([el for el in ([y3[j] for j in xrange(len(x3)) if ind3[j] == i]) if ~numpy.isnan(el)])
-	fig_bin, axes = plt.subplots(nrows=1, ncols=nbins_x, sharey=True)
+	fig_bin, axes = plt.subplots(nrows=1, ncols=nbins_x, sharey=True, figsize=(24,6))
 	bin_num = 0
 	for ax in axes.flat:
 		if color3:
