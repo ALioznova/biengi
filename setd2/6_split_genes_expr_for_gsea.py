@@ -116,3 +116,4 @@ if __name__ == '__main__':
 			#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Metrics_for_Ranking
 			subprocess.call(['java', '-cp', gsea, '-Xmx512m', 'xtools.gsea.Gsea', '-res', res, '-cls', cls, '-gmx', gmx, '-out', out_dir, '-nperm', '10', '-collapse', 'false', '-metric', 'Diff_of_Classes'])
 
+			#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Interpreting_GSEA_Results

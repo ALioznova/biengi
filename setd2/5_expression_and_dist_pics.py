@@ -96,6 +96,26 @@ def plot_points(fig_path, plot_label, xscale, x1, y1, label1, color1, x2, y2, la
 	plt.close(fig)
 
 def plot_bins(fig_path, plot_label, nbins_x, nbins_y, y_lim, x1, y1, label1, color1, x2, y2, label2, color2, x3=[], y3=[], label3=None, color3=None):
+	def find_max_num_for_plot(bins_y, y1, y2, y3=None):
+		max_num = 0
+		for y in y1:
+			freq, _ = numpy.histogram(y, bins = bins_y)
+			for elem in freq:
+				if elem > max_num:
+					max_num = elem
+		for y in y2:
+			freq, _ = numpy.histogram(y, bins = bins_y)
+			for elem in freq:
+				if elem > max_num:
+					max_num = elem
+		if y3:
+			for y in y3:
+				freq, _ = numpy.histogram(y, bins = bins_y)
+				for elem in freq:
+					if elem > max_num:
+						max_num = elem
+		return max_num
+	
 	if len(x1) == 0 and len(x2) == 0 and len(x3) == 0:
 		return
 	data = numpy.concatenate([x1, x2, x3])
@@ -116,13 +136,19 @@ def plot_bins(fig_path, plot_label, nbins_x, nbins_y, y_lim, x1, y1, label1, col
 	y3_split = []
 	for i in xrange(1, nbins_x + 1):
 		y3_split.append([el for el in ([y3[j] for j in xrange(len(x3)) if ind3[j] == i]) if ~numpy.isnan(el)])
+	if color3:
+		max_num = find_max_num_for_plot(nbins_y, y1_split, y2_split, y3_split)
+	else:
+		max_num = find_max_num_for_plot(nbins_y, y1_split, y2_split)
 	fig_bin, axes = plt.subplots(nrows=1, ncols=nbins_x, sharey=True, figsize=(24,6))
 	bin_num = 0
 	for ax in axes.flat:
 		if color3:
-			ax.hist((y1_split[bin_num], y2_split[bin_num], y3_split[bin_num]), bins=nbins_y, normed=1, histtype='bar', color=[color1, color2, color3], label=[label1, label2, label3], orientation="horizontal")[0]
+			ax.hist((y1_split[bin_num], y2_split[bin_num], y3_split[bin_num]), bins=nbins_y, normed=0, histtype='bar', color=[color1, color2, color3], label=[label1, label2, label3], orientation="horizontal")[0]
+			ax.set_xlim((0, max_num*1.1))
 		else:
-			ax.hist((y1_split[bin_num], y2_split[bin_num]), bins=nbins_y, normed=1, histtype='bar', color=[color1, color2], label=[label1, label2], orientation="horizontal")[0]
+			ax.hist((y1_split[bin_num], y2_split[bin_num]), bins=nbins_y, normed=0, histtype='bar', color=[color1, color2], label=[label1, label2], orientation="horizontal")[0]
+			ax.set_xlim((0, max_num*1.1))
 		ax.get_xaxis().set_ticks([])
 		ax.set_xlabel("{0:.1f}".format(float(bins_x[bin_num] + bins_x[bin_num+1])/2))
 		ax.set_ylim(y_lim)
