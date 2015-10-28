@@ -52,6 +52,7 @@ if __name__ == '__main__':
 			if 'phenotype.cls' in elem:
 				phenotype_fn = os.path.join(d, elem)
 		if gene_expression_fn and phenotype_fn:
+			#http://www.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats
 			phenotype_f = open(phenotype_fn)
 			phenotype_f.readline()
 			phenotype_f.readline()
@@ -111,6 +112,7 @@ if __name__ == '__main__':
 
 			out_dir = os.path.join(d, os.path.basename(d) + '_gsea')
 
+			#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Run_GSEA_Page
 			#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Metrics_for_Ranking
 			subprocess.call(['java', '-cp', gsea, '-Xmx512m', 'xtools.gsea.Gsea', '-res', res, '-cls', cls, '-gmx', gmx, '-out', out_dir, '-nperm', '10', '-collapse', 'false', '-metric', 'Diff_of_Classes'])
 
