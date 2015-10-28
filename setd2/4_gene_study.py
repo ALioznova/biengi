@@ -474,28 +474,27 @@ if __name__ == '__main__':
 
 		if gene_expression_fn:
 			fout = open(os.path.join(d, os.path.basename(d) + '_genes_expression.txt'), 'w')
-			fout.write('Name\tDescription')
+			fout.write('Name\tDescription\t')
 			sample_types = []
-			gene_set = Set()
 			sample_names = ''
 			for ((val, sample_name)) in list(gene_expr)[0].val_arr:
 				sample_names += '\t'
 				sample_names += sample_name
 				sample_types.append(sample_classification[sample_name])
-			fout.write(sample_names + '\n')
+			fout.write(sample_names.strip() + '\n')
 			for expr in gene_expr:
-				gene_set.add(expr.name)
-				fout.write(expr.name + '\tna')
-				if ~numpy.isnan(val):
-					fout.write('\t' + str(val))
-				else:
-					fout.write('\t')
+				fout.write(expr.name.split('|')[1] + '\tna') # entrez number only
+				for (val, sn) in expr.val_arr:
+					if ~numpy.isnan(val):
+						fout.write('\t' + str(val))
+					else:
+						fout.write('\t')
 				fout.write('\n')
 			fout.close()
 
 			fout = open(os.path.join(d, os.path.basename(d) + '_phenotype.cls'), 'w')
-			fout.write(str(len(sample_types)) + ' 3 1\n')
-			fout.write('# 1 2 3\n')
+			fout.write(str(len(sample_types)) + ' ' + str(len(Set(sample_types))) + ' 1\n')
+			fout.write('# type1 type2 type3\n')
 			types_line = ''
 			for st in sample_types:
 				if st == Sample_type.norma:
@@ -507,10 +506,5 @@ if __name__ == '__main__':
 				else:
 					types_line += 'unknown '
 			fout.write(types_line[:-1] + '\n')
-			fout.close()
-
-			fout = open(os.path.join(d, os.path.basename(d) + '_gene_set.grp'), 'w')
-			for gene in gene_set:
-				fout.write(gene + '\n')
 			fout.close()
 
