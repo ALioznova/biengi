@@ -283,7 +283,7 @@ def get_setd2_mutation_rate(maf_dir, sample_names):
 	return setd2_mutation_rate
 
 class Gene_expr:
-	def __init__(self, name, tumor, tumor_num, tumor_setd2, tumor_setd2_num, normal, normal_num):
+	def __init__(self, name, tumor, tumor_num, tumor_setd2, tumor_setd2_num, normal, normal_num, val_arr):
 		self.name = name
 		self.tumor = tumor
 		self.tumor_num = tumor_num
@@ -291,6 +291,7 @@ class Gene_expr:
 		self.tumor_setd2_num = tumor_setd2_num
 		self.normal = normal
 		self.normal_num = normal_num
+		self.val_arr = val_arr
 
 class Sample_type(Enum):
 	unknown = -1
@@ -299,10 +300,8 @@ class Sample_type(Enum):
 	tumor_unclassified = 2
 	tumor_setd2 = 3
 
-def process_gene_expression_file(gene_expression_fn, maf_dir):
-	fin = open(gene_expression_fn)
+def get_sample_classification(sample_names):
 	sample_classification = {}
-	sample_names = fin.readline().split('\t')[1:]
 	setd2_mutation_rates = get_setd2_mutation_rate(maf_dir, sample_names)
 	# barcodes https://wiki.nci.nih.gov/display/TCGA/TCGA+Barcode
 	# code tables: https://tcga-data.nci.nih.gov/datareports/codeTablesReport.htm?codeTable=sample%20type
@@ -322,6 +321,12 @@ def process_gene_expression_file(gene_expression_fn, maf_dir):
 			sample_classification[sample_names[i]] = Sample_type.norma
 		else:
 			sample_classification[sample_names[i]] = Sample_type.unknown
+	return sample_classification
+
+def process_gene_expression_file(gene_expression_fn, maf_dir):
+	fin = open(gene_expression_fn)
+	sample_names = fin.readline().split('\t')[1:]
+	sample_classification = get_sample_classification(sample_names)
 	fin.readline()
 	gene_expression = {}
 	for line in fin:
@@ -335,17 +340,21 @@ def process_gene_expression_file(gene_expression_fn, maf_dir):
 		tumor_setd2_val = 0
 		tumor_val = 0
 		normal_val = 0
+		val_arr = []
 		for i in xrange(len(data)):
 			if i % 3 == 2:
 				if sample_classification[sample_names[i]] == Sample_type.tumor_setd2:
 					tumor_setd2_val += (float(data[i]))
 					tumor_setd2_num += 1
+					val_arr.append((tumor_setd2_val, sample_names[i]))
 				elif sample_classification[sample_names[i]] == Sample_type.tumor_wild_type:
 					tumor_val += (float(data[i]))
 					tumor_num += 1
+					val_arr.append((tumor_val, sample_names[i]))
 				elif sample_classification[sample_names[i]] == Sample_type.norma:
 					normal_val += (float(data[i]))
 					normal_num += 1
+					val_arr.append((normal_val, sample_names[i]))
 				else:
 					continue
 		if tumor_setd2_num != 0:
@@ -360,12 +369,13 @@ def process_gene_expression_file(gene_expression_fn, maf_dir):
 			normal_v = (float(normal_val)/normal_num)
 		else:
 			normal_v = (float('nan'))
-		gene_expression[gene_name] = Gene_expr(gene_name, tumor_v, tumor_num, tumor_setd2_v, tumor_setd2_num, normal_v, normal_num)
+		gene_expression[gene_name] = Gene_expr(gene_name, tumor_v, tumor_num, tumor_setd2_v, tumor_setd2_num, normal_v, normal_num, val_arr)
 	fin.close()
-	return gene_expression
+	return (gene_expression, sample_classification)
 
 def get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir):
-	gene_expression = process_gene_expression_file(gene_expression_fn, maf_dir)
+	(gene_expression_data, sample_classification) = process_gene_expression_file(gene_expression_fn, maf_dir)
+	gene_expr = Set()
 	tumor_setd2 = []
 	tumor = []
 	normal = []
@@ -375,15 +385,16 @@ def get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir):
 		normal_cur = []
 		if exon_to_genes[(p.chr_name, p.strand)].has_key((p.end1, p.beg2)):
 			for gene in list(exon_to_genes[(p.chr_name, p.strand)][(p.end1, p.beg2)]):
-				if not gene_expression.has_key(gene):
+				if not gene_expression_data.has_key(gene):
 					continue
-				tumor_setd2_cur.append(gene_expression[gene].tumor_setd2)
-				tumor_cur.append(gene_expression[gene].tumor)
-				normal_cur.append(gene_expression[gene].normal)
+				tumor_setd2_cur.append(gene_expression_data[gene].tumor_setd2)
+				tumor_cur.append(gene_expression_data[gene].tumor)
+				normal_cur.append(gene_expression_data[gene].normal)
+				gene_expr.add(gene_expression_data[gene])
 		tumor_setd2.append(tumor_setd2_cur)
 		tumor.append(tumor_cur)
 		normal.append(normal_cur)
-	return (tumor_setd2, tumor, normal)
+	return (gene_expr, sample_classification, tumor_setd2, tumor, normal)
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -424,7 +435,7 @@ if __name__ == '__main__':
 					maf_dir = os.path.join(d, elem)
 			if not os.path.exists(maf_dir):
 				print 'no such dir:', maf_dir
-			(tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr) = get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir)
+			(gene_expr, sample_classification, tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr) = get_gene_expression(gene_expression_fn, exon_to_genes, pos, maf_dir)
 
 		fout = open(os.path.join(d, os.path.basename(d) + '_expression_and_dist.txt'), 'w')
 		fout.write('Pos:\tGene_dist_bp:\tGene_dist_perc:\tExpr_tumorsetd2:\tExpr_tumor_wt:\tExpr_normal:\n')
@@ -459,4 +470,47 @@ if __name__ == '__main__':
 				new_line += '\t\t\t'
 			new_line += '\n'
 			fout.write(new_line)
+		fout.close()
+
+		if gene_expression_fn:
+			fout = open(os.path.join(d, os.path.basename(d) + '_genes_expression.txt'), 'w')
+			fout.write('Name\tDescription')
+			sample_types = []
+			gene_set = Set()
+			sample_names = ''
+			for ((val, sample_name)) in list(gene_expr)[0].val_arr:
+				sample_names += '\t'
+				sample_names += sample_name
+				sample_types.append(sample_classification[sample_name])
+			fout.write(sample_names + '\n')
+			for expr in gene_expr:
+				gene_set.add(expr.name)
+				fout.write(expr.name + '\tna')
+				if ~numpy.isnan(val):
+					fout.write('\t' + str(val))
+				else:
+					fout.write('\t')
+				fout.write('\n')
+			fout.close()
+
+			fout = open(os.path.join(d, os.path.basename(d) + '_phenotype.cls'), 'w')
+			fout.write(str(len(sample_types)) + ' 3 1\n')
+			fout.write('# 1 2 3\n')
+			types_line = ''
+			for st in sample_types:
+				if st == Sample_type.norma:
+					types_line += 'norma '
+				elif st == Sample_type.tumor_wild_type:
+					types_line += 'tumor_wild_type '
+				elif st == Sample_type.tumor_setd2:
+					types_line += 'tumor_setd2 '
+				else:
+					types_line += 'unknown '
+			fout.write(types_line[:-1] + '\n')
+			fout.close()
+
+			fout = open(os.path.join(d, os.path.basename(d) + '_gene_set.grp'), 'w')
+			for gene in gene_set:
+				fout.write(gene + '\n')
+			fout.close()
 
