@@ -82,7 +82,7 @@ def prepare_data_for_plot_delta_dist(x_arr_of_arr, y_arr1, y_arr2):
 		y.append(abs(y_arr1[i] - y_arr2[i]))
 	return (x, y) 
 
-def prepare_data_for_plot_delta_expr(x_arr_of_arr1, x_arr_of_arr2, y_arr1, y_arr2):
+def prepare_data_for_plot_delta_expr(x_arr_of_arr1, x_arr_of_arr2, x_arr_of_arr3, y_arr1, y_arr2, y_arr3):
 	only_nan1 = True
 	for elem in y_arr1:
 		if ~numpy.isnan(elem):
@@ -93,14 +93,19 @@ def prepare_data_for_plot_delta_expr(x_arr_of_arr1, x_arr_of_arr2, y_arr1, y_arr
 		if ~numpy.isnan(elem):
 			only_nan2 = False
 			break
-	if only_nan1 or only_nan2:
+	only_nan3 = True
+	for elem in y_arr3:
+		if ~numpy.isnan(elem):
+			only_nan3 = False
+			break
+	if only_nan1 or only_nan2 or only_nan3:
 		return ([],[])
 	x = []
 	y = []
 	for i in xrange(len(y_arr1)):
-		if len(x_arr_of_arr1[i]) != 1 or len(x_arr_of_arr2[i]) != 1: # ignore exons corresponding to multiple genes
+		if len(x_arr_of_arr1[i]) != 1 or len(x_arr_of_arr2[i]) != 1  or len(x_arr_of_arr3[i]) != 1: # ignore exons corresponding to multiple genes
 			continue
-		if numpy.isnan(x_arr_of_arr1[i][0]) or numpy.isnan(x_arr_of_arr2[i][0]):
+		if numpy.isnan(y_arr1[i]) or numpy.isnan(y_arr2[i]) or numpy.isnan(y_arr3[i]):
 			continue
 #		x.append(float(x_arr_of_arr1[i][0] - x_arr_of_arr2[i][0]))
 		x.append(float(x_arr_of_arr1[i][0] + x_arr_of_arr2[i][0])/2.0)
@@ -147,7 +152,7 @@ def plot_points(fig_path, plot_label, xscale, xy_data_frames):
 	fig.savefig(fig_path)
 	plt.close(fig)
 
-def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, xy_data_frames):
+def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, y_lim, xy_data_frames):
 	def find_max_num_for_plot(bins_y, xy_data_frames):
 		max_num = 0
 		for df in xy_data_frames:
@@ -180,7 +185,6 @@ def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, xy_data_frames):
 		df.y_split = y_split
 	max_num = find_max_num_for_plot(nbins_y, xy_data_frames)
 	max_num *= 1.1
-	y_lim = 1.0
 	plot_label = plot_label + ', x_max=' + str(max_num)
 	fig_bin, axes = plt.subplots(nrows=1, ncols=nbins_x, sharey=True, figsize=(24,6))
 	bin_num = 0
@@ -192,11 +196,11 @@ def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, xy_data_frames):
 			y_data.append(df.y_split[bin_num])
 			colors.append(df.color)
 			labels.append(df.label)
-		y_bins = numpy.linspace(0.0, y_lim, num=nbins_y+1, endpoint=True)
+		y_bins = numpy.linspace(y_lim[0], y_lim[1], num=nbins_y+1, endpoint=True)
 		ax.hist(y_data, bins=y_bins, normed=0, histtype='bar', color=colors, label=labels, orientation="horizontal")[0]
 		ax.set_xscale(xscale)
 		ax.set_xlim((0, max_num))
-		ax.set_ylim((0, y_lim))
+		ax.set_ylim(y_lim)
 		ax.get_xaxis().set_ticks([])
 		ax.set_xlabel("{0:.1f}".format(float(bins_x[bin_num] + bins_x[bin_num+1])/2))
 		bin_num += 1
@@ -246,6 +250,7 @@ if __name__ == '__main__':
 
 		nbins_x = 10
 		nbins_y = 15
+		y_lim = (0.0, 1.0)
 
 		# expression
 		df = [el for el in [Data_frame_xy('Tumor', 'blue', prepare_data_for_plot(tumor_expr, tumor_psi)), Data_frame_xy('Normal', 'chartreuse', prepare_data_for_plot(normal_expr, normal_psi)), Data_frame_xy('Tumor_setd2', 'red', prepare_data_for_plot(tumor_setd2_expr, tumor_setd2_psi))] if el.num > 0]
@@ -253,15 +258,15 @@ if __name__ == '__main__':
 			expr_path = os.path.join(os.path.join(pics_dir, 'expression'), os.path.basename(d) + '_expr.png')
 			plot_points(expr_path, 'PSI vs expression, ' + os.path.basename(d), 'log', df)
 			expr_bin_path = os.path.join(os.path.join(pics_dir, 'expression'), os.path.basename(d) + '_expr_bin.png')
-			plot_bins(expr_bin_path, 'PSI vs expression for ' + os.path.basename(d), 'log', nbins_x, nbins_y, df)
+			plot_bins(expr_bin_path, 'PSI vs expression for ' + os.path.basename(d), 'log', nbins_x, nbins_y, y_lim, df)
 
 		# average expr, delpa PSI
-		df = [el for el in [Data_frame_xy('tumor-norm', 'blue', prepare_data_for_plot_delta_expr(tumor_expr, normal_expr, tumor_psi, normal_psi)), Data_frame_xy('tumor_setd2-norm', 'red', prepare_data_for_plot_delta_expr(tumor_setd2_expr, normal_expr, tumor_setd2_psi, normal_psi))] if el.num > 0]
+		df = [el for el in [Data_frame_xy('tumor-norm', 'blue', prepare_data_for_plot_delta_expr(tumor_expr, normal_expr, tumor_setd2_expr, tumor_psi, normal_psi, tumor_setd2_psi)), Data_frame_xy('tumor_setd2-norm', 'red', prepare_data_for_plot_delta_expr(tumor_setd2_expr, normal_expr, tumor_expr, tumor_setd2_psi, normal_psi, tumor_psi))] if el.num > 0]
 		if len(df) > 0:
 			dist_perc_delta_path = os.path.join(os.path.join(pics_dir, 'expression_av_delta'), os.path.basename(d) + '_expression_av_delta.png')
 			plot_points(dist_perc_delta_path, 'delta PSI vs average expression, ' + os.path.basename(d), 'linear', df)
 			dist_perc_delta_bin_path = os.path.join(os.path.join(pics_dir, 'expression_av_delta'), os.path.basename(d) + '_expression_av_delta_bin.png')
-			plot_bins(dist_perc_delta_bin_path, 'delta PSI vs average expression for ' + os.path.basename(d), 'log', nbins_x, nbins_y, df)
+			plot_bins(dist_perc_delta_bin_path, 'delta PSI vs average expression for ' + os.path.basename(d), 'log', nbins_x, nbins_y, (-1.0, 1.0), df)
 
 		# distance in bp
 		df = [el for el in [Data_frame_xy('Tumor', 'blue', prepare_data_for_plot(dist_bp, tumor_psi)), Data_frame_xy('Normal', 'chartreuse', prepare_data_for_plot(dist_bp, normal_psi)), Data_frame_xy('Tumor_setd2', 'red', prepare_data_for_plot(dist_bp, tumor_setd2_psi))] if el.num > 0]
@@ -269,7 +274,7 @@ if __name__ == '__main__':
 			dist_bp_path = os.path.join(os.path.join(pics_dir, 'distance_bp'), os.path.basename(d) + '_dist_bp.png')
 			plot_points(dist_bp_path, 'PSI vs distance in bp, ' + os.path.basename(d), 'log', df)
 			dist_bp_bin_path = os.path.join(os.path.join(pics_dir, 'distance_bp'), os.path.basename(d) + '_dist_bp_bin.png')
-			plot_bins(dist_bp_bin_path, 'PSI vs distance in bp for ' + os.path.basename(d), 'log', nbins_x, nbins_y, df)
+			plot_bins(dist_bp_bin_path, 'PSI vs distance in bp for ' + os.path.basename(d), 'log', nbins_x, nbins_y, y_lim, df)
 
 		# distance in percent
 		df = [el for el in [Data_frame_xy('Tumor', 'blue', prepare_data_for_plot(dist_perc, tumor_psi)), Data_frame_xy('Normal', 'chartreuse', prepare_data_for_plot(dist_perc, normal_psi)), Data_frame_xy('Tumor_setd2', 'red', prepare_data_for_plot(dist_perc, tumor_setd2_psi))] if el.num > 0]
@@ -277,7 +282,7 @@ if __name__ == '__main__':
 			dist_perc_path = os.path.join(os.path.join(pics_dir, 'distance_perc'), os.path.basename(d) + '_dist_perc.png')
 			plot_points(dist_perc_path, 'PSI vs distance in perc, ' + os.path.basename(d), 'linear', df)
 			dist_perc_bin_path = os.path.join(os.path.join(pics_dir, 'distance_perc'), os.path.basename(d) + '_dist_perc_bin.png')
-			plot_bins(dist_perc_bin_path, 'PSI vs distance in perc for ' + os.path.basename(d), 'log', nbins_x, nbins_y, df)
+			plot_bins(dist_perc_bin_path, 'PSI vs distance in perc for ' + os.path.basename(d), 'log', nbins_x, nbins_y, y_lim, df)
 
 		# delta distance in bp, delpa PSI
 		df = [el for el in [Data_frame_xy('abs(tumor-norm)', 'blue', prepare_data_for_plot_delta_dist(dist_bp, tumor_psi, normal_psi)), Data_frame_xy('abs(tumor_setd2-norm)', 'red', prepare_data_for_plot_delta_dist(dist_bp, tumor_setd2_psi, normal_psi))] if el.num > 0]
@@ -285,7 +290,7 @@ if __name__ == '__main__':
 			dist_bp_delta_path = os.path.join(os.path.join(pics_dir, 'distance_bp_delta'), os.path.basename(d) + '_dist_bp_delta.png')
 			plot_points(dist_bp_delta_path, 'delta PSI vs distance in bp, ' + os.path.basename(d), 'log', df)
 			dist_bp_delta_bin_path = os.path.join(os.path.join(pics_dir, 'distance_bp_delta'), os.path.basename(d) + '_dist_bp_delta_bin.png')
-			plot_bins(dist_bp_delta_bin_path, 'delta PSI vs distance in bp for ' + os.path.basename(d), 'log', nbins_x, nbins_y, df)
+			plot_bins(dist_bp_delta_bin_path, 'delta PSI vs distance in bp for ' + os.path.basename(d), 'log', nbins_x, nbins_y, y_lim, df)
 
 		# delta distance in perc, delpa PSI
 		df = [el for el in [Data_frame_xy('abs(tumor-norm)', 'blue', prepare_data_for_plot_delta_dist(dist_perc, tumor_psi, normal_psi)), Data_frame_xy('abs(tumor_setd2-norm)', 'red', prepare_data_for_plot_delta_dist(dist_perc, tumor_setd2_psi, normal_psi))] if el.num > 0]
@@ -293,5 +298,5 @@ if __name__ == '__main__':
 			dist_perc_delta_path = os.path.join(os.path.join(pics_dir, 'distance_perc_delta'), os.path.basename(d) + '_dist_perc_delta.png')
 			plot_points(dist_perc_delta_path, 'delta PSI vs distance in perc, ' + os.path.basename(d), 'linear', df)
 			dist_perc_delta_bin_path = os.path.join(os.path.join(pics_dir, 'distance_perc_delta'), os.path.basename(d) + '_dist_perc_delta_bin.png')
-			plot_bins(dist_perc_delta_bin_path, 'delta PSI vs distance in perc for ' + os.path.basename(d), 'log', nbins_x, nbins_y, df)
+			plot_bins(dist_perc_delta_bin_path, 'delta PSI vs distance in perc for ' + os.path.basename(d), 'log', nbins_x, nbins_y, y_lim, df)
 
