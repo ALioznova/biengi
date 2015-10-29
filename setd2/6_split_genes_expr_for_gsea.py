@@ -4,9 +4,9 @@ import os
 import sys
 import argparse
 import subprocess
+import numpy
 from enum import Enum, unique
 from sets import Set
-
 
 def is_tool(name):
 	try:
@@ -17,11 +17,97 @@ def is_tool(name):
 			return False
 	return True
 
-class Sample_type(Enum):
-	unknown = -1
-	norma = 0
-	tumor_wild_type = 1
-	tumor_setd2 = 2
+class Exon:
+	def __init__(self, exon_name, psi_norma, psi_tumor, psi_tumor_setd2):
+		self.name = exon_name
+		self.psi_tumor_setd2 = psi_tumor_setd2
+		self.psi_tumor = psi_tumor
+		self.psi_norma = psi_norma
+
+class Gene:
+	def __init__(self, name):
+		self.name = name
+		self.exons = []
+
+	def add_exon(self, exon):
+		self.exons.append(exon)
+
+def parse_psi_file(fin):
+	f = open(fin)
+	header = f.readline()
+	exons = []
+	for line in f:
+		(name, psi_tumor_setd2, psi_tumor, psi_norma) = line.split('\t')
+		psi_tumor_setd2 = float(psi_tumor_setd2)
+		psi_tumor = float(psi_tumor)
+		psi_norma = float(psi_norma)
+		exons.append(Exon(name, psi_norma, psi_tumor, psi_tumor_setd2))
+	f.close()
+	return exons
+
+def parse_expr_and_dist_file(fin, exons):
+	f = open(fin)
+	header = f.readline()
+	genes = {}
+	line_num = 0
+	for line in f:
+		(name, _, _, _, _, _, gene_name) = line.split('\t')
+		gene_name = gene_name.strip()
+		if gene_name != '':
+			if not genes.has_key(gene_name):
+				genes[gene_name] = Gene(gene_name)
+			if exons[line_num].name == name:
+				genes[gene_name].add_exon(exons[line_num])
+		line_num += 1
+	f.close()
+	return genes
+
+def output_info_for_gsea(data_fn, phenotype_fn, genes):
+	can_run_gsea = False
+	for (gene_name, g) in genes.iteritems():
+		tumor_norm = []
+		tumor_setd2_norm = []
+		for e in g.exons:
+			tumor_norm.append(abs(e.psi_tumor_setd2 - e.psi_norma))
+			tumor_setd2_norm.append(abs(e.psi_tumor - e.psi_norma))
+		if len(tumor_norm) == 0 and len(tumor_setd2_norm) == 0:
+			continue
+		tumor_norm = numpy.nanmax(tumor_norm)
+		tumor_setd2_norm = numpy.nanmax(tumor_setd2_norm)
+		if ~numpy.isnan(tumor_norm) and ~numpy.isnan(tumor_setd2_norm):
+			can_run_gsea = True
+			break
+	if not can_run_gsea:
+		return False
+	#http://www.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats
+	fout = open(data_fn, 'w')
+	fout.write('Name\tDescription\ttumor_norm_delta_psi\ttumor_setd2_norm_delta_psi\n')
+	for (gene_name, exons) in genes.iteritems():
+		fout.write(gene_name.split('|')[1] + '\tna') # entrez number only
+		tumor_norm = []
+		tumor_setd2_norm = []
+		tumor_norm_max = None
+		tumor_setd2_norm_max = None
+		for e in g.exons:
+			tumor_norm.append(abs(e.psi_tumor_setd2 - e.psi_norma))
+			tumor_setd2_norm.append(abs(e.psi_tumor - e.psi_norma))
+		if len(tumor_norm) != 0 and len(tumor_setd2_norm) != 0:
+			tumor_norm_max = numpy.nanmax(tumor_norm)
+			tumor_setd2_norm_max = numpy.nanmax(tumor_setd2_norm)
+		fout.write('\t')
+		if tumor_norm_max and ~numpy.isnan(tumor_norm_max):
+			fout.write(str(tumor_norm_max))			
+		fout.write('\t')
+		if tumor_setd2_norm_max and ~numpy.isnan(tumor_setd2_norm_max):
+			fout.write(str(tumor_setd2_norm_max))			
+		fout.write('\n')
+	fout.close()
+	fout = open(phenotype_fn, 'w')
+	fout.write('2 2 1\n')
+	fout.write('# tumor_norm_delta_psi tumor_setd2_norm_delta_psi\n')
+	fout.write('tumor_norm_delta_psi tumor_setd2_norm_delta_psi\n')
+	fout.close()
+	return True
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -44,129 +130,20 @@ if __name__ == '__main__':
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
-		
-		
-		
-		output_info_for_gsea(os.path.join(d, os.path.basename(d) + '_genes_expression.txt'), os.path.join(d, os.path.basename(d) + '_phenotype.txt'))
 
-		
-		def output_info_for_gsea(data_fn, phenotype_fn):
-	fout = open(data_fn, 'w')
-	fout.write('Name\tDescription\t')
-	sample_types = []
-	sample_names = ''
-	for ((val, sample_name)) in list(gene_expr)[0].val_arr:
-		sample_names += '\t'
-		sample_names += sample_name
-		sample_types.append(sample_classification[sample_name])
-	fout.write(sample_names.strip() + '\n')
-	for expr in gene_expr:
-		fout.write(expr.name.split('|')[1] + '\tna') # entrez number only
-		for (val, sn) in expr.val_arr:
-			if ~numpy.isnan(val):
-				fout.write('\t' + str(val))
-			else:
-				fout.write('\t')
-		fout.write('\n')
-	fout.close()
-
-	fout = open(phenotype_fn, 'w')
-	fout.write(str(len(sample_types)) + ' ' + str(len(Set(sample_types))) + ' 1\n')
-	fout.write('# type1 type2 type3\n')
-	types_line = ''
-	for st in sample_types:
-		if st == Sample_type.norma:
-			types_line += 'norma '
-		elif st == Sample_type.tumor_wild_type:
-			types_line += 'tumor_wild_type '
-		elif st == Sample_type.tumor_setd2:
-			types_line += 'tumor_setd2 '
-		else:
-			types_line += 'unknown '
-	fout.write(types_line[:-1] + '\n')
-	fout.close()
+		expr_dist_fn = os.path.join(d, os.path.basename(d) + '_expression_and_dist.txt')
+		psi_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
+		exons = parse_psi_file(psi_fn)
+		genes = parse_expr_and_dist_file(expr_dist_fn, exons)
+		data_fn = os.path.join(d, os.path.basename(d) + '_gsea_data.txt')
+		phenotype_fn = os.path.join(d, os.path.basename(d) + '_gsea_phenotype.txt')
+		can_run_gsea = output_info_for_gsea(data_fn, phenotype_fn, genes)
+		if not can_run_gsea:
+			continue
+		out_dir = os.path.join(d, os.path.basename(d) + '_gsea')
+		#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Run_GSEA_Page
+		#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Metrics_for_Ranking
+		subprocess.call(['java', '-cp', gsea, '-Xmx512m', 'xtools.gsea.Gsea', '-res', data_fn, '-cls', phenotype_fn, '-gmx', gmx, '-out', out_dir, '-nperm', '10', '-collapse', 'false', '-metric', 'Diff_of_Classes'])
+		#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Interpreting_GSEA_Results
 
 
-
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		gene_expression_fn = None
-		phenotype_fn = None
-		for elem in os.listdir(d):
-			if 'genes_expression.txt' in elem:
-				gene_expression_fn = os.path.join(d, elem)
-			if 'phenotype.txt' in elem:
-				phenotype_fn = os.path.join(d, elem)
-		if gene_expression_fn and phenotype_fn:
-			#http://www.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats
-			phenotype_f = open(phenotype_fn)
-			phenotype_f.readline()
-			phenotype_f.readline()
-			phenotype_data_str = phenotype_f.readline().split()
-			phenotype_data = []
-			for elem in phenotype_data_str:
-				if elem == 'tumor_wild_type':
-					phenotype_data.append(Sample_type.tumor_wild_type)
-				elif elem == 'tumor_setd2':
-					phenotype_data.append(Sample_type.tumor_setd2)
-				elif elem == 'norma':
-					phenotype_data.append(Sample_type.norma)
-				else:
-					phenotype_data.append(Sample_type.unknown)
-			phenotype_f.close()
-			phen_tumor_wt_vs_setd2 = []
-			for i in xrange(len(phenotype_data)):
-				if phenotype_data[i] == Sample_type.tumor_wild_type or phenotype_data[i] == Sample_type.tumor_setd2:
-					phen_tumor_wt_vs_setd2.append(phenotype_data[i])
-			if len(Set(phen_tumor_wt_vs_setd2)) != 2:
-				continue
-			cls = os.path.join(d, os.path.basename(d) + '_phenotype_tumor_wt_vs_setd2.txt')
-			fout_phen = open(cls, 'w')
-			fout_phen.write(str(len(phen_tumor_wt_vs_setd2)) + ' ' + str(len(Set(phen_tumor_wt_vs_setd2))) + ' 1\n')
-			fout_phen.write('#type1 type2\n')
-			types_line = ''
-			for st in phen_tumor_wt_vs_setd2:
-				if st == Sample_type.norma:
-					types_line += 'norma '
-				elif st == Sample_type.tumor_wild_type:
-					types_line += 'tumor_wild_type '
-				elif st == Sample_type.tumor_setd2:
-					types_line += 'tumor_setd2 '
-				else:
-					types_line += 'unknown '
-			fout_phen.write(types_line[:-1] + '\n')
-			fout_phen.close()
-			gene_expression_f = open(gene_expression_fn)
-			res = os.path.join(d, os.path.basename(d) + '_genes_expression_tumor_wt_vs_setd2.txt')
-			fout_expr = open(res, 'w')
-			sample_names = gene_expression_f.readline().split()[2:]
-			fout_expr.write('Name\tDescription')
-			for i in xrange(len(sample_names)):
-				if phenotype_data[i] == Sample_type.tumor_wild_type or phenotype_data[i] == Sample_type.tumor_setd2:
-					fout_expr.write('\t' + sample_names[i])
-			fout_expr.write('\n')
-			for line in gene_expression_f:
-				gene_name = line.split()[0]
-				fout_expr.write(gene_name + '\tna')
-				expr_data = line.split()[2:]
-				for i in xrange(len(phenotype_data)):
-					if phenotype_data[i] == Sample_type.tumor_wild_type or phenotype_data[i] == Sample_type.tumor_setd2:
-						fout_expr.write('\t' + expr_data[i])
-				fout_expr.write('\n')
-			gene_expression_f.close()
-			fout_expr.close()
-
-			out_dir = os.path.join(d, os.path.basename(d) + '_gsea')
-
-			#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Run_GSEA_Page
-			#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Metrics_for_Ranking
-			subprocess.call(['java', '-cp', gsea, '-Xmx512m', 'xtools.gsea.Gsea', '-res', res, '-cls', cls, '-gmx', gmx, '-out', out_dir, '-nperm', '10', '-collapse', 'false', '-metric', 'Diff_of_Classes'])
-
-			#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Interpreting_GSEA_Results

@@ -112,7 +112,6 @@ def prepare_data_for_plot_delta_expr(x_arr_of_arr1, x_arr_of_arr2, x_arr_of_arr3
 		y.append(y_arr1[i] - y_arr2[i])
 	return (x, y) 
 
-
 class Data_frame_xy:
 	def __init__(self, label, color, (x, y)):
 		self.label = label
