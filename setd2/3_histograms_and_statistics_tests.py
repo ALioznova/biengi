@@ -24,34 +24,83 @@ def read_data(in_fn):
 	in_f.close()
 	return (tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal)
 
-def draw_hist(tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal, pic_path):
-	tumor_setd2_broken_filtered = [t for t in tumor_setd2_broken if ~numpy.isnan(t)]
-	tumor_filtered = [n for n in tumor if ~numpy.isnan(n)]
-	normal_filtered = [n for n in normal if ~numpy.isnan(n)]
-	data = [tumor_setd2_broken_filtered, tumor_filtered, normal_filtered]
+class Data_frame:
+	def __init__(self, label, color, y):
+		self.label = label
+		self.color = color
+		self.y = y
+		self.num = len(y)
+
+	def delete_elems_by_index(self, will_del_index):
+		y_new = []
+		for i in xrange(self.num):
+			if not will_del_index[i]:
+				y_new.append(self.y[i])
+		self.y = y_new
+		self.num = len(y_new)
+
+def draw_hist(data_frames, pic_path, plot_label):
+	df_filtered = []
+	for df in data_frames:
+		only_nan = True
+		for elem in df.y:
+			if ~numpy.isnan(elem):
+				only_nan = False
+				break
+		if not only_nan:
+			df_filtered.append(df)
+	data_frames = df_filtered
+	will_del_index = []
+	for i in xrange(data_frames[0].num):
+		will_del = False
+		for df in data_frames:
+			if numpy.isnan(df.y[i]):
+				will_del = True
+		will_del_index.append(will_del)
+	for df in data_frames:
+		df.delete_elems_by_index(will_del_index)
+	data = []
+	colors = []
+	labels = []
+	for df in data_frames:
+		data.append(df.y)
+		colors.append(df.color)
+		labels.append(df.label)
 
 	fig_hist = pylab.figure()
-	n, bins, patches = pylab.hist(data, bins=15, normed=1, histtype='bar', color=['crimson', 'blue', 'chartreuse'], label=['Tumor setd2 mutation impact high, ' + str(tumor_setd2_broken_num) + ' samples', 'Tumor no setd2 mutation, ' + str(tumor_num) + ' samples', 'Normal, ' + str(normal_num) + ' samples'])
-	pylab.title('PSI for ' + os.path.basename(d))
+	n, bins, patches = pylab.hist(data, bins=15, normed=0, histtype='bar', color=colors, label=labels)
+	pylab.title(plot_label)
 	pylab.legend(loc='best')
 	fig_hist.savefig(pic_path)
 	pylab.close(fig_hist)
-	return (tumor_setd2_broken_filtered, tumor_filtered, normal_filtered)
+	tumor = []
+	tumor_setd2 = []
+	normal = []
+	for df in data_frames:
+		if 'Tumor_setd2,' in df.label:
+			tumor_setd2 = df.y
+		if 'Tumor,' in df.label:
+			tumor = df.y
+		if 'Normal,' in df.label:
+			normal = df.y
+	return (tumor_setd2, tumor, normal)
 
 def draw_delta_hist(tumor_setd2_broken, tumor, normal, pic_path):
 	tumor_normal = []
-	for i in xrange(len(normal)):
-		if  ~numpy.isnan(tumor[i]) and ~numpy.isnan(normal[i]):
-			tumor_normal.append(tumor[i] - normal[i])
+	if len(tumor) != 0:
+		for i in xrange(len(normal)):
+			if  ~numpy.isnan(tumor[i]) and ~numpy.isnan(normal[i]):
+				tumor_normal.append(tumor[i] - normal[i])
 	tumor_setd2_normal = []
-	for i in xrange(len(normal)):
-		if  ~numpy.isnan(tumor_setd2_broken[i]) and ~numpy.isnan(normal[i]):
-			tumor_setd2_normal.append(tumor_setd2_broken[i] - normal[i])
+	if len(tumor_setd2_broken) != 0:
+		for i in xrange(len(normal)):
+			if  ~numpy.isnan(tumor_setd2_broken[i]) and ~numpy.isnan(normal[i]):
+				tumor_setd2_normal.append(tumor_setd2_broken[i] - normal[i])
 	if len(tumor_normal) == 0 and len(tumor_setd2_normal) == 0:
 		return ([], [])
 	data_normal = [tumor_setd2_normal, tumor_normal]
 	fig_hist_delta = pylab.figure()
-	n, bins, patches = pylab.hist(data_normal, bins=35, normed=1, histtype='bar', color=['crimson', 'blue'], label=['tsetd2-n', 't-n'])
+	n, bins, patches = pylab.hist(data_normal, bins=35, normed=0, histtype='bar', color=['crimson', 'blue'], label=['tsetd2-n', 't-n'])
 	pylab.title('Delta PSI for ' + os.path.basename(d))
 	pylab.legend(loc='best')
 	fig_hist_delta.savefig(pic_path)
@@ -81,10 +130,14 @@ if __name__ == '__main__':
 		print 'processing', os.path.basename(d)
 		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
 		(tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
+
+		df = [el for el in [Data_frame('Tumor, ' + str(tumor_num) + ' samples', 'blue', tumor), Data_frame('Normal, ' + str(normal_num) + ' samples', 'chartreuse', normal), Data_frame('Tumor_setd2, ' + str(tumor_setd2_broken_num) + ' samples', 'red', tumor_setd2_broken)] if el.num > 0]
 		hist_path = os.path.join(os.path.join(pics_dir, 'hist'), os.path.basename(d) + '_hist.png')
-		(tumor_setd2_broken_filtered, tumor_filtered, normal_filtered) = draw_hist(tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal, hist_path)
+		(tumor_setd2_broken_filtered, tumor_filtered, normal_filtered) = draw_hist(df, hist_path, 'PSI for ' + os.path.basename(d))
+
 		delta_path = os.path.join(os.path.join(pics_dir, 'delta_hist'), os.path.basename(d) + '_delta_hist.png')
-		(tumor_setd2_normal, tumor_normal) = draw_delta_hist(tumor_setd2_broken, tumor, normal, delta_path)
+		(tumor_setd2_normal, tumor_normal) = draw_delta_hist(tumor_setd2_broken_filtered, tumor_filtered, normal_filtered, delta_path)
+
 
 		U, pval = stats.mannwhitneyu(tumor_setd2_broken_filtered, tumor_filtered)
 		pval *= 2 # two-sided hypothesis
