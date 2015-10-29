@@ -44,12 +44,65 @@ if __name__ == '__main__':
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
+		
+		
+		
+		output_info_for_gsea(os.path.join(d, os.path.basename(d) + '_genes_expression.txt'), os.path.join(d, os.path.basename(d) + '_phenotype.txt'))
+
+		
+		def output_info_for_gsea(data_fn, phenotype_fn):
+	fout = open(data_fn, 'w')
+	fout.write('Name\tDescription\t')
+	sample_types = []
+	sample_names = ''
+	for ((val, sample_name)) in list(gene_expr)[0].val_arr:
+		sample_names += '\t'
+		sample_names += sample_name
+		sample_types.append(sample_classification[sample_name])
+	fout.write(sample_names.strip() + '\n')
+	for expr in gene_expr:
+		fout.write(expr.name.split('|')[1] + '\tna') # entrez number only
+		for (val, sn) in expr.val_arr:
+			if ~numpy.isnan(val):
+				fout.write('\t' + str(val))
+			else:
+				fout.write('\t')
+		fout.write('\n')
+	fout.close()
+
+	fout = open(phenotype_fn, 'w')
+	fout.write(str(len(sample_types)) + ' ' + str(len(Set(sample_types))) + ' 1\n')
+	fout.write('# type1 type2 type3\n')
+	types_line = ''
+	for st in sample_types:
+		if st == Sample_type.norma:
+			types_line += 'norma '
+		elif st == Sample_type.tumor_wild_type:
+			types_line += 'tumor_wild_type '
+		elif st == Sample_type.tumor_setd2:
+			types_line += 'tumor_setd2 '
+		else:
+			types_line += 'unknown '
+	fout.write(types_line[:-1] + '\n')
+	fout.close()
+
+
+
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		gene_expression_fn = None
 		phenotype_fn = None
 		for elem in os.listdir(d):
 			if 'genes_expression.txt' in elem:
 				gene_expression_fn = os.path.join(d, elem)
-			if 'phenotype.cls' in elem:
+			if 'phenotype.txt' in elem:
 				phenotype_fn = os.path.join(d, elem)
 		if gene_expression_fn and phenotype_fn:
 			#http://www.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats
@@ -74,7 +127,7 @@ if __name__ == '__main__':
 					phen_tumor_wt_vs_setd2.append(phenotype_data[i])
 			if len(Set(phen_tumor_wt_vs_setd2)) != 2:
 				continue
-			cls = os.path.join(d, os.path.basename(d) + '_phenotype_tumor_wt_vs_setd2.cls')
+			cls = os.path.join(d, os.path.basename(d) + '_phenotype_tumor_wt_vs_setd2.txt')
 			fout_phen = open(cls, 'w')
 			fout_phen.write(str(len(phen_tumor_wt_vs_setd2)) + ' ' + str(len(Set(phen_tumor_wt_vs_setd2))) + ' 1\n')
 			fout_phen.write('#type1 type2\n')

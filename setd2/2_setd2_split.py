@@ -172,7 +172,7 @@ def compute(psi_filename, maf_dir):
 
 def output_sample_avarage_arrays(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn):
 	out_f = open(out_fn, 'w')
-	out_f.write('Pos\tTumor_setd2:' + str(tumor_setd2_broken_num) + '\tTumor:' + str(tumor_num) + '\tNorma:' + str(normal_num) + '\n')
+	out_f.write('Pos\tPSI_tumor_setd2:' + str(tumor_setd2_broken_num) + '\tPSI_tumor:' + str(tumor_num) + '\tPSI_norma:' + str(normal_num) + '\n')
 	for i in xrange(len(normal_psi_spliced_average)):
 		out_f.write(pos[i] + '\t' + str(tumor_setd2_broken_psi_spliced_average[i]) + '\t' + str(tumor_psi_spliced_average[i]) + '\t' + str(normal_psi_spliced_average[i]) + '\n')
 	out_f.close()
@@ -194,7 +194,7 @@ if __name__ == '__main__':
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
-		print 'processing', d
+		print 'processing', os.path.basename(d)
 		for elem in os.listdir(d):
 			if 'Mutation_Packager_Oncotated_Raw_Calls' in elem:
 				maf_dir = os.path.join(d, elem)
@@ -211,7 +211,7 @@ if __name__ == '__main__':
 		
 		(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average) = compute(psi_filename, maf_dir)
 
-		out_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
+		out_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
 		
 		output_sample_avarage_arrays(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn)
 

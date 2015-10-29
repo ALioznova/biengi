@@ -79,7 +79,7 @@ if __name__ == '__main__':
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
-		in_fn = os.path.join(d, os.path.basename(d) + '__t_setd2__t__n.txt')
+		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
 		(tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
 		hist_path = os.path.join(os.path.join(pics_dir, 'hist'), os.path.basename(d) + '_hist.png')
 		(tumor_setd2_broken_filtered, tumor_filtered, normal_filtered) = draw_hist(tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal, hist_path)
