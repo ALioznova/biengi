@@ -153,21 +153,36 @@ def compute(psi_filename, maf_dir):
 		tumor_setd2_broken_psi_cur = []
 		tumor_psi_cur = []
 		normal_psi_cur = []
+		tumor_setd2_broken_num = 0
+		tumor_num = 0
+		normal_num = 0
 		for i in xrange(len(sample_type)):
 			if (sample_type[i] >= 1) and (sample_type[i] <= 9): # tumor
 				if setd2_mutation_rates.has_key(sample_names[i]):
 					if setd2_mutation_rates[sample_names[i]] == Impact.high:
-						tumor_setd2_broken_psi_cur.append(elem.psi[i])
+						tumor_setd2_broken_num += 1
+						if not numpy.isnan(elem.psi[i]):
+							tumor_setd2_broken_psi_cur.append(elem.psi[i])
 					elif setd2_mutation_rates[sample_names[i]] == Impact.no:
-						tumor_psi_cur.append(elem.psi[i])
+						tumor_num += 1
+						if not numpy.isnan(elem.psi[i]):
+							tumor_psi_cur.append(elem.psi[i])
 			elif (sample_type[i] >= 10) and (sample_type[i] <= 19): # norma
-				normal_psi_cur.append(elem.psi[i])
-		tumor_setd2_broken_num = len(tumor_setd2_broken_psi_cur)
-		tumor_num = len(tumor_psi_cur)
-		normal_num = len(normal_psi_cur)
-		tumor_setd2_broken_psi_spliced_average.append(numpy.nanmean(tumor_setd2_broken_psi_cur))
-		tumor_psi_spliced_average.append(numpy.nanmean(tumor_psi_cur))
-		normal_psi_spliced_average.append(numpy.nanmean(normal_psi_cur))
+				normal_num += 1
+				if not numpy.isnan(elem.psi[i]):
+					normal_psi_cur.append(elem.psi[i])
+		if len(tumor_setd2_broken_psi_cur) != 0:
+			tumor_setd2_broken_psi_spliced_average.append(numpy.nanmean(tumor_setd2_broken_psi_cur))
+		else:
+			tumor_setd2_broken_psi_spliced_average.append(float('nan'))
+		if len(tumor_psi_cur) != 0:
+			tumor_psi_spliced_average.append(numpy.nanmean(tumor_psi_cur))
+		else:
+			tumor_psi_spliced_average.append(float('nan'))
+		if len(normal_psi_cur) != 0:
+			normal_psi_spliced_average.append(numpy.nanmean(normal_psi_cur))
+		else:
+			normal_psi_spliced_average.append(float('nan'))
 	return (pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average)
 
 def output_sample_avarage_arrays(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn):
