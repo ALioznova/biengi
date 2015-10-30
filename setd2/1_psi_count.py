@@ -75,13 +75,7 @@ def find_spliced_intervals(data):
 
 def calculate_psi(N_ab, N_bc, N_ac):
 	# http://geuvadiswiki.crg.es/index.php/Percentage_Splicing_Index
-	if N_ab + N_bc + N_ac == 0:
-		return float('nan')
-	if N_ab + N_bc == 0:
-		return float('nan')
-	if N_ac == 0:
-		return float('nan')
-	if (N_ab + N_bc) * 0.5 + N_ac <= 10:
+	if ((N_ab + N_bc) * 0.5 <= 5) or (N_ac <= 5):
 		return float('nan')
 	return (float(N_ab + N_bc)/(N_ab + N_ac + N_bc))
 
