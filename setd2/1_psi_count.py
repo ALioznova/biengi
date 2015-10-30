@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 from intervaltree import Interval, IntervalTree
+import numpy
 
 class data_frame:
 	def __init__(self, begin, end, coverage):
@@ -48,7 +49,6 @@ class three_intervals:
 		self.bc = bc_index
 		self.ac = ac_index
 
-
 def find_spliced_intervals(data):
 	interval_trees = build_interval_trees(data)
 	intervals = {}
@@ -77,6 +77,10 @@ def calculate_psi(N_ab, N_bc, N_ac):
 	# http://geuvadiswiki.crg.es/index.php/Percentage_Splicing_Index
 	if N_ab + N_bc + N_ac == 0:
 		return float('nan')
+	if N_ab + N_bc == 0:
+		return float('nan')
+	if N_ac == 0:
+		return float('nan')
 	if (N_ab + N_bc) * 0.5 + N_ac <= 10:
 		return float('nan')
 	return (float(N_ab + N_bc)/(N_ab + N_ac + N_bc))
@@ -93,10 +97,17 @@ def compute(in_fn, out_fn):
 	for (chr_name, chr_intervals) in intervals.iteritems():
 		chr_data = data[chr_name]
 		for elem in chr_intervals:
-			out_f.write(chr_name[:-1] + ':' + str(chr_data[elem.ab].begin) + ':' + str(chr_data[elem.ab].end) + ':' + str(chr_data[elem.bc].begin) + ':' + str(chr_data[elem.bc].end) + ':' + chr_name[-1])
+			new_line = ''
+			new_line += (chr_name[:-1] + ':' + str(chr_data[elem.ab].begin) + ':' + str(chr_data[elem.ab].end) + ':' + str(chr_data[elem.bc].begin) + ':' + str(chr_data[elem.bc].end) + ':' + chr_name[-1])
+			only_nan = True
 			for i in xrange(samples_num):
-				out_f.write('\t' + str(calculate_psi(chr_data[elem.ab].coverage[i], chr_data[elem.bc].coverage[i], chr_data[elem.ac].coverage[i])))
-			out_f.write('\n')
+				new_line += '\t'
+				cur_psi = calculate_psi(chr_data[elem.ab].coverage[i], chr_data[elem.bc].coverage[i], chr_data[elem.ac].coverage[i])
+				new_line += str(cur_psi)
+				if not numpy.isnan(cur_psi):
+					only_nan = False
+			if not only_nan:
+				out_f.write(new_line + '\n')
 	out_f.close()
 
 if __name__ == '__main__':
@@ -115,7 +126,7 @@ if __name__ == '__main__':
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
-		print 'processing', d
+		print 'processing', os.path.basename(d)
 		for elem in os.listdir(d):
 			if 'junction_quantification' in elem:
 				in_f = os.path.join(d, elem)
