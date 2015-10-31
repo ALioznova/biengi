@@ -66,7 +66,11 @@ def parse_expr_and_dist_file(fin, exons):
 def output_info_for_gsea(data_fn, phenotype_fn, genes):
 	can_run_gsea = False
 	for (gene_name, g) in genes.iteritems():
-		if ~numpy.isnan(numpy.nanmax([abs(e.psi_tumor_setd2 - e.psi_norma) for e in g.exons])) and ~numpy.isnan(numpy.nanmax([abs(e.psi_tumor - e.psi_norma) for e in g.exons])):
+		t_setd2_n = [abs(e.psi_tumor_setd2 - e.psi_norma) for e in g.exons]
+		t_setd2_n = [e for e in t_setd2_n if ~numpy.isnan(e)]
+		t_n = [abs(e.psi_tumor - e.psi_norma) for e in g.exons]
+		t_n = [e for e in t_n if ~numpy.isnan(e)]
+		if len(t_setd2_n) > 0 and len(t_n) > 0:
 			can_run_gsea = True
 			break
 	if not can_run_gsea:
@@ -77,21 +81,25 @@ def output_info_for_gsea(data_fn, phenotype_fn, genes):
 	for (gene_name, g) in genes.iteritems():
 		new_line = ''
 		new_line += (gene_name.split('|')[1] + '\tna') # entrez number only
-		if len([abs(e.psi_tumor - e.psi_norma) for e in g.exons]) > 0:
-			tumor_norm_max = numpy.nanmax([abs(e.psi_tumor - e.psi_norma) for e in g.exons])
+		t_setd2_n = [abs(e.psi_tumor_setd2 - e.psi_norma) for e in g.exons]
+		t_setd2_n = [e for e in t_setd2_n if ~numpy.isnan(e)]
+		t_n = [abs(e.psi_tumor - e.psi_norma) for e in g.exons]
+		t_n = [e for e in t_n if ~numpy.isnan(e)]
+		if len(t_n) > 0:
+			tumor_norm_max = max(t_n)
 		else:
 			tumor_norm_max = None
-		if len(([abs(e.psi_tumor_setd2 - e.psi_norma) for e in g.exons])) > 0:
-			tumor_setd2_norm_max = numpy.nanmax([abs(e.psi_tumor_setd2 - e.psi_norma) for e in g.exons])
+		if len(t_setd2_n) > 0:
+			tumor_setd2_norm_max = max(t_setd2_n)
 		else:
 			tumor_setd2_norm_max = None
 		new_line += ('\t')
-		if tumor_norm_max and ~numpy.isnan(tumor_norm_max):
+		if tumor_norm_max:
 			new_line += (str(tumor_norm_max))
 		new_line += ('\t')
-		if tumor_setd2_norm_max and ~numpy.isnan(tumor_setd2_norm_max):
+		if tumor_setd2_norm_max:
 			new_line += (str(tumor_setd2_norm_max))
-		if (not (tumor_norm_max and ~numpy.isnan(tumor_norm_max))) or (not (tumor_setd2_norm_max and ~numpy.isnan(tumor_setd2_norm_max))):
+		if (not tumor_norm_max) or (not tumor_setd2_norm_max):
 			new_line = None
 		if new_line:
 			fout.write(new_line + '\n')

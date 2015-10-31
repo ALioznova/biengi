@@ -66,7 +66,6 @@ def draw_hist(data_frames, pic_path, plot_label):
 		data.append(df.y)
 		colors.append(df.color)
 		labels.append(df.label)
-
 	fig_hist = pylab.figure()
 	n, bins, patches = pylab.hist(data, bins=15, normed=0, histtype='bar', color=colors, label=labels)
 	pylab.title(plot_label)
