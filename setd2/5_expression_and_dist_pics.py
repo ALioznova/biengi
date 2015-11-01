@@ -180,10 +180,11 @@ def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, y_lim, xy_data_fra
 		df.ind = numpy.digitize(df.x, bins_x)
 		y_split = []
 		for i in xrange(1, nbins_x + 1):
-			y_split.append([el for el in ([df.y[j] for j in xrange(df.num) if df.ind[j] == i]) if ~numpy.isnan(el)])
+			y_split.append([df.y[j] for j in xrange(df.num) if df.ind[j] == i])
+#			y_split.append([el for el in ([df.y[j] for j in xrange(df.num) if df.ind[j] == i]) if ~numpy.isnan(el)])
 		df.y_split = y_split
 	max_num = find_max_num_for_plot(nbins_y, xy_data_frames)
-	max_num *= 1.1
+	max_num *= 1.5
 	plot_label = plot_label + ', x_max=' + str(max_num)
 	fig_bin, axes = plt.subplots(nrows=1, ncols=nbins_x, sharey=True, figsize=(24,6))
 	bin_num = 0
@@ -196,7 +197,7 @@ def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, y_lim, xy_data_fra
 			colors.append(df.color)
 			labels.append(df.label)
 		y_bins = numpy.linspace(y_lim[0], y_lim[1], num=nbins_y+1, endpoint=True)
-		ax.hist(y_data, bins=y_bins, normed=0, histtype='bar', color=colors, label=labels, orientation="horizontal")[0]
+		ax.hist(y_data, bins=y_bins, normed=0, histtype='bar', color=colors, label=labels, orientation="horizontal")
 		ax.set_xscale(xscale)
 		ax.set_xlim((0, max_num))
 		ax.set_ylim(y_lim)
