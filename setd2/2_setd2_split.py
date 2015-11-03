@@ -127,6 +127,19 @@ def get_setd2_mutation_rate(maf_dir, sample_names):
 		setd2_mutation_rate[sample] = mutation_impact
 	return setd2_mutation_rate
 
+def output_setd2_mutation_rates(maf_dir, out_file):
+	mutation_impact_dict = get_mutation_impact_dict()
+	sample_list = [os.path.join(maf_dir, el) for el in os.listdir(maf_dir)]
+	out_f = open(out_file, 'w')
+	for s_file_name in sample_list:
+		if not '.hg19.oncotator.hugo_entrez_remapped.maf.txt' in (s_file_name):
+			print 'Not a maf file', s_file_name
+			continue
+		sample = os.path.basename(s_file_name).split('.')[0]
+		mutation_impact = find_setd2_mutation_impact(s_file_name, mutation_impact_dict)
+		out_f.write(sample + '\t' + str(mutation_impact) + '\n')
+	out_f.close()
+
 def compute(psi_filename, maf_dir):
 	inf = open(psi_filename)
 	sample_names = [s.strip() for s in inf.readline().split()[2:]]
@@ -219,6 +232,10 @@ if __name__ == '__main__':
 		for elem in os.listdir(d):
 			if os.path.isdir(os.path.join(os.path.join(data_dir, d), elem)):
 				maf_dir = os.path.abspath(os.path.join(os.path.join(data_dir, d), elem))
+
+		sample_types_fn = os.path.join(d, os.path.basename(d) + '_setd2_mutation_impact_for_samples.txt')
+		output_setd2_mutation_rates(maf_dir, sample_types_fn)
+
 		psi_filename = os.path.join(d, os.path.basename(d) + '_PSI.txt')
 		if not os.path.exists(psi_filename):
 			print 'no such file:', psi_filename
