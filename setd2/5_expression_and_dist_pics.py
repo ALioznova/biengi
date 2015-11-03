@@ -202,7 +202,7 @@ def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, y_lim, xy_data_fra
 		ax.set_xlim((0, max_num))
 		ax.set_ylim(y_lim)
 		ax.get_xaxis().set_ticks([])
-		ax.set_xlabel("{0:.1f}".format(float(bins_x[bin_num] + bins_x[bin_num+1])/2))
+		ax.set_xlabel("{0:.1f}-{1:.1f}".format(bins_x[bin_num], bins_x[bin_num+1]))
 		bin_num += 1
 	fig_bin.suptitle(plot_label, fontsize=14)
 	fig_bin.subplots_adjust(bottom=0.25)
