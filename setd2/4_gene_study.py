@@ -226,22 +226,22 @@ def get_sample_classification(sample_names, samples_classification_fn):
 	setd2_mutation_rates = {}
 	fin = open(samples_classification_fn)
 	for line in fin:
-		sample_name = line.split()[0]
+		s_name = line.split()[0]
 		sample_type = (line.split()[1]).strip()
 		if sample_type == 'Impact.high':
-			setd2_mutation_rates[sample_type] = Impact.high
+			setd2_mutation_rates[s_name] = Impact.high
 		elif sample_type == 'Impact.moderate':
-			setd2_mutation_rates[sample_type] = Impact.moderate
+			setd2_mutation_rates[s_name] = Impact.moderate
 		elif sample_type == 'Impact.low':
-			setd2_mutation_rates[sample_type] = Impact.low
+			setd2_mutation_rates[s_name] = Impact.low
 		elif sample_type == 'Impact.modifier':
-			setd2_mutation_rates[sample_type] = Impact.modifier
+			setd2_mutation_rates[s_name] = Impact.modifier
 		elif sample_type == 'Impact.no':
-			setd2_mutation_rates[sample_type] = Impact.no
+			setd2_mutation_rates[s_name] = Impact.no
 		elif sample_type == 'Impact.unknown':
-			setd2_mutation_rates[sample_type] = Impact.unknown
+			setd2_mutation_rates[s_name] = Impact.unknown
 		else:
-			setd2_mutation_rates[sample_type] = Impact.unknown
+			setd2_mutation_rates[s_name] = Impact.unknown
 			print 'Unknown type', sample_type
 	fin.close()
 	# barcodes https://wiki.nci.nih.gov/display/TCGA/TCGA+Barcode
