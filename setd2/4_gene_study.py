@@ -22,7 +22,7 @@ class Pos_rec:
 		else:
 			self.strand = False
 
-def read_data(in_fn):
+def read_psi_average_data(in_fn):
 	in_f = open(in_fn)
 	header_line = in_f.readline()
 	tumor_setd2_broken_num = int((header_line.split()[1]).split(':')[1])
@@ -401,7 +401,7 @@ if __name__ == '__main__':
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
 		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
-		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
+		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_psi_average_data(in_fn)
 		exon_to_genes = exon_to_gene_names(exon_dict, interval_trees, pos)
 
 		(gene_beg_dist_bp, gene_beg_dist_perc, gene_names) = get_gene_dist(exon_to_genes, genes_data, pos)

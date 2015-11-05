@@ -10,7 +10,7 @@ import matplotlib.patches as mpatches
 from scipy import stats
 from scipy.stats import mstats
 
-def read_psi_data(in_fn):
+def read_psi_average_data(in_fn):
 	in_f = open(in_fn)
 	header_line = in_f.readline()
 	tumor_setd2_broken_num = int((header_line.split()[1]).split(':')[1])
@@ -246,7 +246,7 @@ if __name__ == '__main__':
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
 		psi_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
-		(tumor_setd2_broken_num, tumor_setd2_psi, tumor_num, tumor_psi, normal_num, normal_psi) = read_psi_data(psi_fn)
+		(tumor_setd2_broken_num, tumor_setd2_psi, tumor_num, tumor_psi, normal_num, normal_psi) = read_psi_average_data(psi_fn)
 		expr_dist_fn = os.path.join(d, os.path.basename(d) + '_expression_and_dist.txt')
 		(dist_bp, dist_perc, tumor_setd2_expr, tumor_expr, normal_expr) = read_expr_dist_data(expr_dist_fn)
 

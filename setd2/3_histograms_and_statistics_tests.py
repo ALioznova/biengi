@@ -8,7 +8,7 @@ import pylab
 from scipy import stats
 from scipy.stats import mstats
 
-def read_data(in_fn):
+def read_psi_average_data(in_fn):
 	in_f = open(in_fn)
 	header_line = in_f.readline()
 	tumor_setd2_broken_num = int((header_line.split()[1]).split(':')[1])
@@ -128,7 +128,7 @@ if __name__ == '__main__':
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
 		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
-		(tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_data(in_fn)
+		(tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_psi_average_data(in_fn)
 
 		df = [el for el in [Data_frame('Tumor, ' + str(tumor_num) + ' samples', 'blue', tumor), Data_frame('Normal, ' + str(normal_num) + ' samples', 'chartreuse', normal), Data_frame('Tumor_setd2, ' + str(tumor_setd2_broken_num) + ' samples', 'red', tumor_setd2_broken)] if el.num > 0]
 		hist_path = os.path.join(os.path.join(pics_dir, 'hist'), os.path.basename(d) + '_hist.png')
