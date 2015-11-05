@@ -152,11 +152,12 @@ def plot_points(fig_path, plot_label, xscale, xy_data_frames):
 	plt.close(fig)
 
 def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, y_lim, xy_data_frames):
-	def find_max_num_for_plot(bins_y, xy_data_frames):
+	def find_max_num_for_plot(bins_y, xy_data_frames, y_lim):
 		max_num = 0
 		for df in xy_data_frames:
 			for elem in df.y_split:
-				freq, _ = numpy.histogram(elem, bins = bins_y)
+				y_bins = numpy.linspace(y_lim[0], y_lim[1], num=nbins_y+1, endpoint=True)
+				freq, _ = numpy.histogram(elem, bins = y_bins)
 				if max(freq) > max_num:
 					max_num = max(freq)
 		return max_num
@@ -183,17 +184,18 @@ def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, y_lim, xy_data_fra
 			y_split.append([df.y[j] for j in xrange(df.num) if df.ind[j] == i])
 #			y_split.append([el for el in ([df.y[j] for j in xrange(df.num) if df.ind[j] == i]) if ~numpy.isnan(el)])
 		df.y_split = y_split
-	max_num = find_max_num_for_plot(nbins_y, xy_data_frames)
-	max_num *= 1.5
+	max_num = find_max_num_for_plot(nbins_y, xy_data_frames, y_lim)
+	max_num *= 1.1
+
 	plot_label = plot_label + ', x_max=' + str(max_num)
 	fig_bin, axes = plt.subplots(nrows=1, ncols=nbins_x, sharey=True, figsize=(24,6))
-	bin_num = 0
+	x_bin_num = 0
 	for ax in axes.flat:
 		y_data = []
 		colors = []
 		labels = []
 		for df in xy_data_frames:
-			y_data.append(df.y_split[bin_num])
+			y_data.append(df.y_split[x_bin_num])
 			colors.append(df.color)
 			labels.append(df.label)
 		y_bins = numpy.linspace(y_lim[0], y_lim[1], num=nbins_y+1, endpoint=True)
@@ -202,8 +204,8 @@ def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, y_lim, xy_data_fra
 		ax.set_xlim((0, max_num))
 		ax.set_ylim(y_lim)
 		ax.get_xaxis().set_ticks([])
-		ax.set_xlabel("{0:.1f}-{1:.1f}".format(bins_x[bin_num], bins_x[bin_num+1]))
-		bin_num += 1
+		ax.set_xlabel("{0:.1f}-{1:.1f}".format(bins_x[x_bin_num], bins_x[x_bin_num+1]))
+		x_bin_num += 1
 	fig_bin.suptitle(plot_label, fontsize=14)
 	fig_bin.subplots_adjust(bottom=0.25)
 	patches = []
@@ -252,6 +254,7 @@ if __name__ == '__main__':
 		nbins_y = 15
 		y_lim = (0.0, 1.0)
 
+
 		# expression
 		df = [el for el in [Data_frame_xy('Tumor', 'blue', prepare_data_for_plot(tumor_expr, tumor_psi)), Data_frame_xy('Normal', 'chartreuse', prepare_data_for_plot(normal_expr, normal_psi)), Data_frame_xy('Tumor_setd2', 'red', prepare_data_for_plot(tumor_setd2_expr, tumor_setd2_psi))] if el.num > 0]
 		if len(df) > 0:
@@ -299,4 +302,5 @@ if __name__ == '__main__':
 			plot_points(dist_perc_delta_path, 'delta PSI vs distance in perc, ' + os.path.basename(d), 'linear', df)
 			dist_perc_delta_bin_path = os.path.join(os.path.join(pics_dir, 'distance_perc_delta'), os.path.basename(d) + '_dist_perc_delta_bin.png')
 			plot_bins(dist_perc_delta_bin_path, 'delta PSI vs distance in perc for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
+
 
