@@ -12,7 +12,10 @@ class Pos_rec:
 	def __init__(self, description):
 		(chr_name, begin1, end1, begin2, end2, strand) = description.split(':')
 		self.desc = description
-		self.chr_name = chr_name
+		if chr_name.startswith('chr'):
+			self.chr_name = chr_name[len('chr'):]
+		else:
+			self.chr_name = chr_name
 		self.beg1 = int(begin1)
 		self.end1 = int(end1)
 		self.beg2 = int(begin2)
@@ -125,7 +128,11 @@ def get_sample_classification(sample_names, samples_classification_fn):
 			sample_classification[sample_names[i]] = Sample_type.unknown
 	return sample_classification
 
-def read_methylation_data(methylation_f, sample_names, sample_classification, interval_trees):
+def process_methylation_data(methylation_fn, samples_classification_fn, interval_trees):
+	methylation_f = open(methylation_fn)
+	sample_names = methylation_f.readline().strip().split('\t')[1:]
+	methylation_f.readline()
+	sample_classification = get_sample_classification(list(Set(sample_names)), samples_classification_fn)
 	for line in methylation_f:
 		cur_meth = {Sample_type.norma: [], Sample_type.tumor_wild_type: [], Sample_type.tumor_setd2 : []}
 		data = line.strip().split('\t')[1:]
@@ -148,10 +155,28 @@ def read_methylation_data(methylation_f, sample_names, sample_classification, in
 			else:
 				cur_meth[key] = float('nan')
 		if interval_trees.has_key(cur_chr):
-			for (key, value) in cur_meth.iteritems():
+			for (cur_type, cur_type_meth) in cur_meth.iteritems():
 				for interval in interval_trees[cur_chr][cur_pos]:
-					interval[key].data.append(value)
+					if ~numpy.isnan(cur_type_meth):
+						interval.data[cur_type].append(cur_type_meth)
+	methylation_f.close()
+	for (chr_name, intervals) in interval_trees.iteritems():
+		for interval in intervals:
+			for (cur_type, cur_type_meth) in interval.data.iteritems():
+				if len(cur_type_meth) == 0:
+					interval.data[cur_type] = float('nan')
+				else:
+					interval.data[cur_type] = numpy.mean(cur_type_meth)
+	return interval_trees
 
+def output_methylation_info(output_fn, interval_trees):
+	outf = open(output_fn, 'w')
+	outf.write('Exon_pos\tTumor_wt\tTumor_setd2\tNorma\n')
+	for (chr_name, intervals) in interval_trees.iteritems():
+		for interval in intervals:
+			if not (numpy.isnan(interval.data[Sample_type.tumor_wild_type]) and numpy.isnan(interval.data[Sample_type.tumor_setd2]) and numpy.isnan(interval.data[Sample_type.norma])):
+				outf.write('chr' + chr_name + ':' + str(interval.begin) + ':' + str(interval.end) + '\t' + str(interval.data[Sample_type.tumor_wild_type]) + '\t' + str(interval.data[Sample_type.tumor_setd2]) + '\t' + str(interval.data[Sample_type.norma]) + '\n')
+	outf.close()
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -165,21 +190,14 @@ if __name__ == '__main__':
 	
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
-##
-		if os.path.basename(d) != 'OV':
-			continue
-##
 		print 'processing', os.path.basename(d)
 		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
 		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_psi_average_data(in_fn)
 		interval_trees = build_exon_interval_tree(pos)
 		methylation_fn = os.path.join(d, os.path.basename(d) + '.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt')
 		samples_classification_fn = os.path.join(d, os.path.basename(d) + '_setd2_mutation_impact_for_samples.txt')
+		interval_trees = process_methylation_data(methylation_fn, samples_classification_fn, interval_trees)
+		output_fn = os.path.join(d, os.path.basename(d) + '_exon_methylation.txt')
+		output_methylation_info(output_fn, interval_trees)
 
-		methylation_f = open(methylation_fn)
-		sample_names = methylation_f.readline().strip().split('\t')[1:]
-		methylation_f.readline()
-		sample_classification = get_sample_classification(list(Set(sample_names)), samples_classification_fn)
-		read_methylation_data(methylation_f, sample_names, sample_classification, interval_trees)
-		methylation_f.close()
 
