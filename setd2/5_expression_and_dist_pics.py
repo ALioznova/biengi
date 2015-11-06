@@ -166,6 +166,8 @@ def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, y_lim, xy_data_fra
 	for i in xrange(xy_data_frames[0].num):
 		will_del = False
 		for df in xy_data_frames:
+			if numpy.isnan(df.x[i]):
+				will_del = True
 			if numpy.isnan(df.y[i]):
 				will_del = True
 		will_del_index.append(will_del)
@@ -253,7 +255,6 @@ if __name__ == '__main__':
 		nbins_x = 10
 		nbins_y = 15
 		y_lim = (0.0, 1.0)
-
 
 		# expression
 		df = [el for el in [Data_frame_xy('Tumor', 'blue', prepare_data_for_plot(tumor_expr, tumor_psi)), Data_frame_xy('Normal', 'chartreuse', prepare_data_for_plot(normal_expr, normal_psi)), Data_frame_xy('Tumor_setd2', 'red', prepare_data_for_plot(tumor_setd2_expr, tumor_setd2_psi))] if el.num > 0]
