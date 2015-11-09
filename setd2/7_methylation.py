@@ -133,6 +133,17 @@ def process_methylation_data(methylation_fn, samples_classification_fn, interval
 	sample_names = methylation_f.readline().strip().split('\t')[1:]
 	methylation_f.readline()
 	sample_classification = get_sample_classification(list(Set(sample_names)), samples_classification_fn)
+	tumor_wt_num = 0
+	tumor_setd2_num = 0
+	normal_num = 0
+	for (s_name, s_type) in sample_classification.iteritems():
+		if s_type == Sample_type.tumor_wild_type:
+			tumor_wt_num += 1
+		elif s_type == Sample_type.tumor_setd2:
+			tumor_setd2_num += 1
+		elif s_type == Sample_type.norma:
+			normal_num += 1
+	print 'tumor_wt', tumor_wt_num, 'tumor_setd2', tumor_setd2_num, 'normal', normal_num
 	for line in methylation_f:
 		cur_meth = {Sample_type.norma: [], Sample_type.tumor_wild_type: [], Sample_type.tumor_setd2 : []}
 		data = line.strip().split('\t')[1:]
