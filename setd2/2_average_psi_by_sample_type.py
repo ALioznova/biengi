@@ -44,6 +44,26 @@ class Impact(OrderedEnum):
 	no = -1
 	unknown = -2
 
+class Sample_type(Enum):
+	unknown = -1
+	norma = 0
+	tumor_wild_type = 1
+	tumor_unclassified = 2
+	tumor_mutant = 3
+
+class Categorized_data_frame:
+	def __init__(self, data, samples_num):
+		self.data = data
+		self.samples_num = samples_num
+		self.current_arr_to_call_mean = []
+		
+	def count_psi(self):
+		if len(self.current_arr_to_call_mean) != 0:
+			self.data.append(numpy.nanmean(self.current_arr_to_call_mean))
+		else:
+			self.data.append(float('nan'))
+		self.current_arr_to_call_mean = []
+
 def get_mutation_impact_dict():
 	# information source: http://www.ensembl.org/info/genome/variation/predicted_data.html#consequences
 	# useful tool: http://mutationassessor.org/
@@ -88,7 +108,7 @@ def get_mutation_impact_dict():
 	mutation_impact_dict['intergenic_variant'] = Impact.modifier
 	return mutation_impact_dict
 
-def find_setd2_mutation_impact(s_file_name, mutation_impact_dict):
+def find_mut_gene_mutation_impact(s_file_name, mutation_impact_dict, mut_gene):
 	def find_mutation_type_column(line):
 		# maf common header: https://wiki.nci.nih.gov/display/TCGA/Mutation+Annotation+Format+%28MAF%29+Specification
 		# oncotator help: https://www.broadinstitute.org/oncotator/help/
@@ -107,27 +127,16 @@ def find_setd2_mutation_impact(s_file_name, mutation_impact_dict):
 		return Impact.unknown
 	impacts = [Impact.no]
 	for line in maf_file:
-		if line.startswith('SETD2\t'):
+		if line.startswith(mut_gene.upper() + '\t'):
 			mutation_type = line.split('\t')[mutation_type_index]
 			if not mutation_impact_dict.has_key(mutation_type):
 				print 'Unknown mutation type:', mutation_type
 				continue
-			setd2_mutation_impact = mutation_impact_dict[mutation_type]
-			impacts.append(setd2_mutation_impact)
+			mut_gene_mutation_impact = mutation_impact_dict[mutation_type]
+			impacts.append(mut_gene_mutation_impact)
 	return max(impacts)
 
-def get_setd2_mutation_rate(maf_dir, sample_names):
-	setd2_mutation_rate = {}
-	mutation_impact_dict = get_mutation_impact_dict()
-	for sample in sample_names:
-		s_file_name = os.path.join(maf_dir, sample[:15] + '.hg19.oncotator.hugo_entrez_remapped.maf.txt')
-		if not os.path.exists(s_file_name):
-			continue
-		mutation_impact = find_setd2_mutation_impact(s_file_name, mutation_impact_dict)
-		setd2_mutation_rate[sample] = mutation_impact
-	return setd2_mutation_rate
-
-def output_setd2_mutation_rates(maf_dir, out_file):
+def output_mut_gene_mutation_rates(maf_dir, out_file, mut_gene):
 	mutation_impact_dict = get_mutation_impact_dict()
 	sample_list = [os.path.join(maf_dir, el) for el in os.listdir(maf_dir)]
 	out_f = open(out_file, 'w')
@@ -136,18 +145,42 @@ def output_setd2_mutation_rates(maf_dir, out_file):
 			print 'Not a maf file', s_file_name
 			continue
 		sample = os.path.basename(s_file_name).split('.')[0]
-		mutation_impact = find_setd2_mutation_impact(s_file_name, mutation_impact_dict)
+		mutation_impact = find_mut_gene_mutation_impact(s_file_name, mutation_impact_dict, mut_gene)
 		out_f.write(sample + '\t' + str(mutation_impact) + '\n')
 	out_f.close()
 
-def compute(psi_filename, maf_dir):
+def get_mut_gene_mutation_rate(maf_dir, sample_names, mut_gene):
+	gene_mutation_rate = {}
+	mutation_impact_dict = get_mutation_impact_dict()
+	for sample in sample_names:
+		s_file_name = os.path.join(maf_dir, sample[:15] + '.hg19.oncotator.hugo_entrez_remapped.maf.txt')
+		if not os.path.exists(s_file_name):
+			continue
+		mutation_impact = find_mut_gene_mutation_impact(s_file_name, mutation_impact_dict, mut_gene)
+		gene_mutation_rate[sample] = mutation_impact
+	return gene_mutation_rate
+
+def compute(psi_filename, maf_dir, mut_gene):
+	def get_sample_type(sample_type, sample_name, gene_mutation_rates):
+		if (sample_type >= 1) and (sample_type <= 9): # tumor
+			if gene_mutation_rates.has_key(sample_name):
+				if gene_mutation_rates[sample_name] == Impact.high:
+					return Sample_type.tumor_mutant
+				elif gene_mutation_rates[sample_name] == Impact.no:
+					return Sample_type.tumor_wild_type
+				else:
+					return Sample_type.tumor_unclassified
+		elif (sample_type >= 10) and (sample_type <= 19): # norma
+			return Sample_type.norma
+		else:
+			return Sample_type.unknown
+
 	inf = open(psi_filename)
 	sample_names = [s.strip() for s in inf.readline().split()[2:]]
-	setd2_mutation_rates = get_setd2_mutation_rate(maf_dir, sample_names)
+	gene_mutation_rates = get_mut_gene_mutation_rate(maf_dir, sample_names, mut_gene)
 	# barcodes https://wiki.nci.nih.gov/display/TCGA/TCGA+Barcode
 	# code tables: https://tcga-data.nci.nih.gov/datareports/codeTablesReport.htm?codeTable=sample%20type
 	sample_type = [int(s.split('-')[3][:2]) for s in sample_names]
-
 	data = []
 	pos = []
 	for line in inf:
@@ -155,66 +188,38 @@ def compute(psi_filename, maf_dir):
 		pos.append(line.split()[0])
 	inf.close()
 
-	tumor_setd2_broken_num = 0
-	tumor_num = 0
-	normal_num = 0
-
-	tumor_setd2_broken_psi_spliced_average = []
-	tumor_psi_spliced_average = []
-	normal_psi_spliced_average = []
+	categorized_psi = {Sample_type.norma : Categorized_data_frame([], 0), Sample_type.tumor_wild_type : Categorized_data_frame([], 0), Sample_type.tumor_mutant : Categorized_data_frame([], 0)}
+	for i in xrange(len(sample_type)):
+		cur_type = get_sample_type(sample_type[i], sample_names[i], gene_mutation_rates)
+		if categorized_psi.has_key(cur_type):
+			categorized_psi[cur_type].samples_num += 1
 	for elem in data:
-		tumor_setd2_broken_psi_cur = []
-		tumor_psi_cur = []
-		normal_psi_cur = []
-		tumor_setd2_broken_num = 0
-		tumor_num = 0
-		normal_num = 0
 		for i in xrange(len(sample_type)):
-			if (sample_type[i] >= 1) and (sample_type[i] <= 9): # tumor
-				if setd2_mutation_rates.has_key(sample_names[i]):
-					if setd2_mutation_rates[sample_names[i]] == Impact.high:
-						tumor_setd2_broken_num += 1
-						if not numpy.isnan(elem.psi[i]):
-							tumor_setd2_broken_psi_cur.append(elem.psi[i])
-					elif setd2_mutation_rates[sample_names[i]] == Impact.no:
-						tumor_num += 1
-						if not numpy.isnan(elem.psi[i]):
-							tumor_psi_cur.append(elem.psi[i])
-			elif (sample_type[i] >= 10) and (sample_type[i] <= 19): # norma
-				normal_num += 1
-				if not numpy.isnan(elem.psi[i]):
-					normal_psi_cur.append(elem.psi[i])
-		if len(tumor_setd2_broken_psi_cur) != 0:
-			tumor_setd2_broken_psi_spliced_average.append(numpy.nanmean(tumor_setd2_broken_psi_cur))
-		else:
-			tumor_setd2_broken_psi_spliced_average.append(float('nan'))
-		if len(tumor_psi_cur) != 0:
-			tumor_psi_spliced_average.append(numpy.nanmean(tumor_psi_cur))
-		else:
-			tumor_psi_spliced_average.append(float('nan'))
-		if len(normal_psi_cur) != 0:
-			normal_psi_spliced_average.append(numpy.nanmean(normal_psi_cur))
-		else:
-			normal_psi_spliced_average.append(float('nan'))
-	return (pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average)
+			cur_type = get_sample_type(sample_type[i], sample_names[i], gene_mutation_rates)
+			if categorized_psi.has_key(cur_type) and ~numpy.isnan(elem.psi[i]):
+				categorized_psi[cur_type].current_arr_to_call_mean.append(elem.psi[i])
+		for (cur_type, cur_psi_data) in categorized_psi.iteritems():
+			cur_psi_data.count_psi()
+	return (pos, categorized_psi)
 
-def output_sample_avarage_arrays(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn):
+def output_sample_avarage_arrays(pos, categorized_psi, out_fn):
 	out_f = open(out_fn, 'w')
-	out_f.write('Pos\tPSI_tumor_setd2:' + str(tumor_setd2_broken_num) + '\tPSI_tumor:' + str(tumor_num) + '\tPSI_norma:' + str(normal_num) + '\n')
-	for i in xrange(len(normal_psi_spliced_average)):
-		out_f.write(pos[i] + '\t' + str(tumor_setd2_broken_psi_spliced_average[i]) + '\t' + str(tumor_psi_spliced_average[i]) + '\t' + str(normal_psi_spliced_average[i]) + '\n')
+	out_f.write('Pos\tPSI_tumor_mutant:' + str(categorized_psi[Sample_type.tumor_mutant].samples_num) + '\tPSI_tumor_wild_type:' + str(categorized_psi[Sample_type.tumor_wild_type].samples_num) + '\tPSI_norma:' + str(categorized_psi[Sample_type.norma].samples_num) + '\n')
+	for i in xrange(len(pos)):
+		out_f.write(pos[i] + '\t' + str(categorized_psi[Sample_type.tumor_mutant].data[i]) + '\t' + str(categorized_psi[Sample_type.tumor_wild_type].data[i]) + '\t' + str(categorized_psi[Sample_type.norma].data[i]) + '\n')
 	out_f.close()
-
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
 		print 'Usage:', sys.argv[0], '-d <data directory>'
 		exit()
 
-	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Split to normal, tumor with setd2 mutation and tumor without mutation in setd2')
+	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Categorize to normal, tumor with mut_gene mutation and tumor wild type')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
+	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
+	mutant_gene = args.mut_gene.strip()
 
 	if not os.path.isdir(data_dir):
 		print >> sys.stderr, 'Not a directory ' + data_dir
@@ -229,21 +234,13 @@ if __name__ == '__main__':
 		if not os.path.exists(maf_dir):
 			print 'no such dir:', maf_dir
 
-		for elem in os.listdir(d):
-			if os.path.isdir(os.path.join(os.path.join(data_dir, d), elem)):
-				maf_dir = os.path.abspath(os.path.join(os.path.join(data_dir, d), elem))
-
-		sample_types_fn = os.path.join(d, os.path.basename(d) + '_setd2_mutation_impact_for_samples.txt')
-		output_setd2_mutation_rates(maf_dir, sample_types_fn)
+		sample_types_fn = os.path.join(d, os.path.basename(d) + '_' + mutant_gene + '_mutation_impact_for_samples.txt')
+		output_mut_gene_mutation_rates(maf_dir, sample_types_fn, mutant_gene)
 
 		psi_filename = os.path.join(d, os.path.basename(d) + '_PSI.txt')
 		if not os.path.exists(psi_filename):
 			print 'no such file:', psi_filename
 			continue
-		
-		(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average) = compute(psi_filename, maf_dir)
-
-		out_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
-		
-		output_sample_avarage_arrays(pos, tumor_setd2_broken_num, tumor_num, normal_num, tumor_setd2_broken_psi_spliced_average, tumor_psi_spliced_average, normal_psi_spliced_average, out_fn)
-
+		(pos, categorized_psi) = compute(psi_filename, maf_dir, mutant_gene)
+		out_fn = os.path.join(d, os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
+		output_sample_avarage_arrays(pos, categorized_psi, out_fn)
