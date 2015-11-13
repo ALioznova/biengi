@@ -211,7 +211,7 @@ def output_sample_avarage_arrays(pos, categorized_psi, out_fn):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory>'
+		print 'Usage:', sys.argv[0], '-d <data directory> -m <mutant gene name>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Categorize to normal, tumor with mut_gene mutation and tumor wild type')

@@ -7,22 +7,7 @@ import numpy
 import pylab
 from scipy import stats
 from scipy.stats import mstats
-
-def read_psi_average_data(in_fn):
-	in_f = open(in_fn)
-	header_line = in_f.readline()
-	tumor_setd2_broken_num = int((header_line.split()[1]).split(':')[1])
-	tumor_num = int((header_line.split()[2]).split(':')[1])
-	normal_num = int((header_line.split()[3]).split(':')[1])
-	tumor_setd2_broken = []
-	tumor = []
-	normal = []
-	for line in in_f:
-		tumor_setd2_broken.append(float(line.split()[1]))
-		tumor.append(float(line.split()[2]))
-		normal.append(float(line.split()[3]))
-	in_f.close()
-	return (tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal)
+from enum import Enum
 
 class Data_frame:
 	def __init__(self, label, color, y):
@@ -39,7 +24,36 @@ class Data_frame:
 		self.y = y_new
 		self.num = len(y_new)
 
-def draw_hist(data_frames, pic_path, plot_label):
+class Categorized_data_frame:
+	def __init__(self, data, samples_num):
+		self.data = data
+		self.samples_num = samples_num
+		self.current_arr_to_call_mean = []
+
+class Sample_type(Enum):
+	norma = 0
+	tumor_wild_type = 1
+	tumor_mutant = 2
+
+class Difference_type(Enum):
+	tumor_wild_type_minus_norma = 1
+	tumor_mutant_minus_norma = 2
+
+def read_psi_average_data(in_fn):
+	in_f = open(in_fn)
+	header_line = in_f.readline()
+	tumor_mutant_num = int((header_line.split()[1]).split(':')[1])
+	tumor_wild_type_num = int((header_line.split()[2]).split(':')[1])
+	normal_num = int((header_line.split()[3]).split(':')[1])
+	categorized_psi = {Sample_type.norma : Categorized_data_frame([], normal_num), Sample_type.tumor_wild_type : Categorized_data_frame([], tumor_wild_type_num), Sample_type.tumor_mutant : Categorized_data_frame([], tumor_mutant_num)}
+	for line in in_f:
+		categorized_psi[Sample_type.tumor_mutant].data.append(float(line.split()[1]))
+		categorized_psi[Sample_type.tumor_wild_type].data.append(float(line.split()[2]))
+		categorized_psi[Sample_type.norma].data.append(float(line.split()[3]))
+	in_f.close()
+	return categorized_psi
+
+def filter_data(data_frames):
 	df_filtered = []
 	for df in data_frames:
 		only_nan = True
@@ -59,6 +73,8 @@ def draw_hist(data_frames, pic_path, plot_label):
 		will_del_index.append(will_del)
 	for df in data_frames:
 		df.delete_elems_by_index(will_del_index)
+
+def draw_hist(data_frames, pic_path, plot_label):
 	data = []
 	colors = []
 	labels = []
@@ -72,73 +88,60 @@ def draw_hist(data_frames, pic_path, plot_label):
 	pylab.legend(loc='best')
 	fig_hist.savefig(pic_path)
 	pylab.close(fig_hist)
-	tumor = []
-	tumor_setd2 = []
-	normal = []
-	for df in data_frames:
-		if 'Tumor_setd2,' in df.label:
-			tumor_setd2 = df.y
-		if 'Tumor,' in df.label:
-			tumor = df.y
-		if 'Normal,' in df.label:
-			normal = df.y
-	return (tumor_setd2, tumor, normal)
 
-def draw_delta_hist(tumor_setd2_broken, tumor, normal, pic_path):
-	tumor_normal = []
-	if len(tumor) != 0:
-		for i in xrange(len(normal)):
-			if  ~numpy.isnan(tumor[i]) and ~numpy.isnan(normal[i]):
-				tumor_normal.append(tumor[i] - normal[i])
-	tumor_setd2_normal = []
-	if len(tumor_setd2_broken) != 0:
-		for i in xrange(len(normal)):
-			if  ~numpy.isnan(tumor_setd2_broken[i]) and ~numpy.isnan(normal[i]):
-				tumor_setd2_normal.append(tumor_setd2_broken[i] - normal[i])
-	if len(tumor_normal) == 0 and len(tumor_setd2_normal) == 0:
-		return ([], [])
-	data_normal = [tumor_setd2_normal, tumor_normal]
-	fig_hist_delta = pylab.figure()
-	n, bins, patches = pylab.hist(data_normal, bins=35, normed=0, histtype='bar', color=['crimson', 'blue'], label=['tsetd2-n', 't-n'])
-	pylab.title('Delta PSI for ' + os.path.basename(d))
-	pylab.legend(loc='best')
-	fig_hist_delta.savefig(pic_path)
-	pylab.close(fig_hist_delta)
-	return (tumor_setd2_normal, tumor_normal)
+def get_difference_data(categorized_psi):
+	data = {}
+	if not categorized_psi.has_key(Sample_type.norma):
+		return None
+	if categorized_psi.has_key(Sample_type.tumor_wild_type):
+		tumor_wild_type_norma = [categorized_psi[Sample_type.tumor_wild_type].data[i] - categorized_psi[Sample_type.norma].data[i] for i in xrange(len(categorized_psi[Sample_type.norma].data)) if (~numpy.isnan(categorized_psi[Sample_type.norma].data[i]) and ~numpy.isnan(categorized_psi[Sample_type.tumor_wild_type].data[i]) and ~numpy.isnan(categorized_psi[Sample_type.tumor_mutant].data[i]))]
+		if len(tumor_wild_type_norma) > 0:
+			data[Difference_type.tumor_wild_type_minus_norma] = Data_frame('tumor_wt_minus_norma', 'blue', tumor_wild_type_norma)
+	if categorized_psi.has_key(Sample_type.tumor_mutant):
+		tumor_mutant_norma = [categorized_psi[Sample_type.tumor_mutant].data[i] - categorized_psi[Sample_type.norma].data[i] for i in xrange(len(categorized_psi[Sample_type.norma].data)) if (~numpy.isnan(categorized_psi[Sample_type.norma].data[i]) and ~numpy.isnan(categorized_psi[Sample_type.tumor_wild_type].data[i]) and ~numpy.isnan(categorized_psi[Sample_type.tumor_mutant].data[i]))]
+		if len(tumor_mutant_norma) > 0:
+			data[Difference_type.tumor_mutant_minus_norma] = Data_frame('tumor_mut_minus_norma', 'red', tumor_mutant_norma)
+	return data
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory> -p <pictures directory>'
+		print 'Usage:', sys.argv[0], '-d <data directory> -p <pictures directory>  -m <mutant gene name>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Analyze')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
 	parser.add_argument('-p', '--pics_dir', help='pictures directory', required=True)
+	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
 	pics_dir = args.pics_dir
+	mutant_gene = args.mut_gene.strip()
 
-	if not os.path.exists(os.path.join(pics_dir, 'hist')):
-		os.mkdir(os.path.join(pics_dir, 'hist'))
-	if not os.path.exists(os.path.join(pics_dir, 'delta_hist')):
-		os.mkdir(os.path.join(pics_dir, 'delta_hist'))
+	hist_dir = os.path.join(pics_dir, 'histogram_of_PSI_for_' + mutant_gene)
+	delta_hist_dir = os.path.join(pics_dir, 'histogram_of_delta_PSI_tumor_norm_for_' + mutant_gene)
 
+	if not os.path.exists(hist_dir):
+		os.mkdir(hist_dir)
+	if not os.path.exists(delta_hist_dir):
+		os.mkdir(delta_hist_dir)
 
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
-		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
-		(tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_psi_average_data(in_fn)
+		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
+		categorized_psi = read_psi_average_data(in_fn)
 
-		df = [el for el in [Data_frame('Tumor, ' + str(tumor_num) + ' samples', 'blue', tumor), Data_frame('Normal, ' + str(normal_num) + ' samples', 'chartreuse', normal), Data_frame('Tumor_setd2, ' + str(tumor_setd2_broken_num) + ' samples', 'red', tumor_setd2_broken)] if el.num > 0]
-		hist_path = os.path.join(os.path.join(pics_dir, 'hist'), os.path.basename(d) + '_hist.png')
-		(tumor_setd2_broken_filtered, tumor_filtered, normal_filtered) = draw_hist(df, hist_path, 'PSI for ' + os.path.basename(d))
+		df = [el for el in [Data_frame('Tumor_wild_type, ' + str(categorized_psi[Sample_type.tumor_wild_type].samples_num) + ' samples', 'blue', categorized_psi[Sample_type.tumor_wild_type].data), Data_frame('Normal, ' + str(categorized_psi[Sample_type.norma].samples_num) + ' samples', 'chartreuse', categorized_psi[Sample_type.norma].data), Data_frame('Tumor_mutant, ' + str(categorized_psi[Sample_type.tumor_mutant].samples_num) + ' samples', 'red', categorized_psi[Sample_type.tumor_mutant].data)] if el.num > 0]
+		filter_data(df)
+		hist_path = os.path.join(hist_dir, os.path.basename(d) + '_hist.png')
+		draw_hist(df, hist_path, 'PSI for ' + os.path.basename(d))
 
-		delta_path = os.path.join(os.path.join(pics_dir, 'delta_hist'), os.path.basename(d) + '_delta_hist.png')
-		(tumor_setd2_normal, tumor_normal) = draw_delta_hist(tumor_setd2_broken_filtered, tumor_filtered, normal_filtered, delta_path)
+		diff_df = get_difference_data(categorized_psi)
+		if len(diff_df) > 0:
+			delta_path = os.path.join(delta_hist_dir, os.path.basename(d) + '_delta_hist.png')
+			draw_hist(diff_df.values(), delta_path, 'Delta PSI for ' + os.path.basename(d))
 
-
-		U, pval = stats.mannwhitneyu(tumor_setd2_broken_filtered, tumor_filtered)
+"""		U, pval = stats.mannwhitneyu(tumor_setd2_broken_filtered, tumor_filtered)
 		pval *= 2 # two-sided hypothesis
 		print 'mann-whitneyu for PSI pval', pval
 		if pval < 0.05:
@@ -167,4 +170,4 @@ if __name__ == '__main__':
 			print('Accept NULL hypothesis - No significant difference between groups.')
 		
 		print
-
+"""
