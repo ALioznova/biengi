@@ -73,7 +73,7 @@ def filter_data(data_frames):
 	for df in data_frames:
 		df.delete_elems_by_index(will_del_index)
 
-def draw_hist(data_frames, pic_path, plot_label):
+def draw_hist(data_frames, pic_path, plot_label, nbins):
 	data = []
 	colors = []
 	labels = []
@@ -82,7 +82,7 @@ def draw_hist(data_frames, pic_path, plot_label):
 		colors.append(df.color)
 		labels.append(df.label)
 	fig_hist = pylab.figure()
-	n, bins, patches = pylab.hist(data, bins=15, normed=0, histtype='bar', color=colors, label=labels)
+	n, bins, patches = pylab.hist(data, bins=nbins, normed=0, histtype='bar', color=colors, label=labels)
 	pylab.title(plot_label)
 	pylab.legend(loc='best')
 	fig_hist.savefig(pic_path)
@@ -95,11 +95,11 @@ def get_difference_data(categorized_psi):
 	if categorized_psi.has_key(Sample_type.tumor_wild_type):
 		tumor_wild_type_norma = [categorized_psi[Sample_type.tumor_wild_type].data[i] - categorized_psi[Sample_type.norma].data[i] for i in xrange(len(categorized_psi[Sample_type.norma].data)) if (~numpy.isnan(categorized_psi[Sample_type.norma].data[i]) and ~numpy.isnan(categorized_psi[Sample_type.tumor_wild_type].data[i]) and ~numpy.isnan(categorized_psi[Sample_type.tumor_mutant].data[i]))]
 		if len(tumor_wild_type_norma) > 0:
-			data[Difference_type.tumor_wild_type_minus_norma] = Data_frame('tumor_wt_minus_norma', 'blue', tumor_wild_type_norma)
+			data[Difference_type.tumor_wild_type_minus_norma] = Data_frame('wt - norma', 'blue', tumor_wild_type_norma)
 	if categorized_psi.has_key(Sample_type.tumor_mutant):
 		tumor_mutant_norma = [categorized_psi[Sample_type.tumor_mutant].data[i] - categorized_psi[Sample_type.norma].data[i] for i in xrange(len(categorized_psi[Sample_type.norma].data)) if (~numpy.isnan(categorized_psi[Sample_type.norma].data[i]) and ~numpy.isnan(categorized_psi[Sample_type.tumor_wild_type].data[i]) and ~numpy.isnan(categorized_psi[Sample_type.tumor_mutant].data[i]))]
 		if len(tumor_mutant_norma) > 0:
-			data[Difference_type.tumor_mutant_minus_norma] = Data_frame('tumor_mut_minus_norma', 'red', tumor_mutant_norma)
+			data[Difference_type.tumor_mutant_minus_norma] = Data_frame('mut - norma', 'red', tumor_mutant_norma)
 	return data
 
 if __name__ == '__main__':
@@ -133,12 +133,12 @@ if __name__ == '__main__':
 		df = [el for el in [Data_frame('Tumor_wild_type, ' + str(categorized_psi[Sample_type.tumor_wild_type].samples_num) + ' samples', 'blue', categorized_psi[Sample_type.tumor_wild_type].data), Data_frame('Normal, ' + str(categorized_psi[Sample_type.norma].samples_num) + ' samples', 'chartreuse', categorized_psi[Sample_type.norma].data), Data_frame('Tumor_mutant, ' + str(categorized_psi[Sample_type.tumor_mutant].samples_num) + ' samples', 'red', categorized_psi[Sample_type.tumor_mutant].data)] if el.num > 0]
 		filter_data(df)
 		hist_path = os.path.join(hist_dir, os.path.basename(d) + '_hist.png')
-		draw_hist(df, hist_path, 'PSI for ' + os.path.basename(d))
+		draw_hist(df, hist_path, 'PSI for ' + os.path.basename(d), 15)
 
 		diff_df = get_difference_data(categorized_psi)
 		if len(diff_df) > 0:
 			delta_path = os.path.join(delta_hist_dir, os.path.basename(d) + '_delta_hist.png')
-			draw_hist(diff_df.values(), delta_path, 'Delta PSI for ' + os.path.basename(d))
+			draw_hist(diff_df.values(), delta_path, 'Delta PSI for ' + os.path.basename(d), 25)
 
 """		U, pval = stats.mannwhitneyu(tumor_setd2_broken_filtered, tumor_filtered)
 		pval *= 2 # two-sided hypothesis
