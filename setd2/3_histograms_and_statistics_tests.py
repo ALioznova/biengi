@@ -114,7 +114,7 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	data_dir = args.data_dir
 	pics_dir = args.pics_dir
-	mutant_gene = args.mut_gene.strip()
+	mutant_gene = args.mut_gene
 
 	hist_dir = os.path.join(pics_dir, 'histogram_of_PSI_for_' + mutant_gene)
 	delta_hist_dir = os.path.join(pics_dir, 'histogram_of_delta_PSI_tumor_norm_for_' + mutant_gene)

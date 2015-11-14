@@ -237,7 +237,7 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	data_dir = args.data_dir
 	pics_dir = args.pics_dir
-	mutant_gene = args.mut_gene.strip()
+	mutant_gene = args.mut_gene
 
 	expr_dir = os.path.join(pics_dir, 'expression_vs_PSI_for_' + mutant_gene)
 	expr_average_dir = os.path.join(pics_dir, 'average_expr_vs_delta_PSI_for_' + mutant_gene)

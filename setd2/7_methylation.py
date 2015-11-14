@@ -25,31 +25,18 @@ class Pos_rec:
 		else:
 			self.strand = False
 
-def read_psi_average_data(in_fn):
-	in_f = open(in_fn)
-	header_line = in_f.readline()
-	tumor_setd2_broken_num = int((header_line.split()[1]).split(':')[1])
-	tumor_num = int((header_line.split()[2]).split(':')[1])
-	normal_num = int((header_line.split()[3]).split(':')[1])
-	pos = []
-	tumor_setd2_broken = []
-	tumor = []
-	normal = []
-	for line in in_f:
-		pos.append(Pos_rec(line.split()[0]))
-		tumor_setd2_broken.append(float(line.split()[1]))
-		tumor.append(float(line.split()[2]))
-		normal.append(float(line.split()[3]))
-	in_f.close()
-	return (pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal)
-
-def build_exon_interval_tree(pos):
-	interval_trees = {}
-	for p in pos:
-		if not interval_trees.has_key(p.chr_name):
-			interval_trees[p.chr_name] = IntervalTree()
-		interval_trees[p.chr_name][p.end1 : p.beg2] = {Sample_type.norma: [], Sample_type.tumor_wild_type: [], Sample_type.tumor_setd2 : []} # doesn't include right border
-	return interval_trees
+class Categorized_data_frame:
+	def __init__(self, data, samples_num):
+		self.data = data
+		self.samples_num = samples_num
+		self.current_arr_to_call_mean = []
+		
+	def count_mean(self):
+		if len(self.current_arr_to_call_mean) != 0:
+			self.data.append(numpy.nanmean(self.current_arr_to_call_mean))
+		else:
+			self.data.append(float('nan'))
+		self.current_arr_to_call_mean = []
 
 class OrderedEnum(Enum):
 	 def __ge__(self, other):
@@ -83,29 +70,53 @@ class Sample_type(Enum):
 	norma = 0
 	tumor_wild_type = 1
 	tumor_unclassified = 2
-	tumor_setd2 = 3
+	tumor_mutant = 3
+
+def read_psi_average_data(in_fn):
+	in_f = open(in_fn)
+	header_line = in_f.readline()
+	tumor_mutant_num = int((header_line.split()[1]).split(':')[1])
+	tumor_wild_type_num = int((header_line.split()[2]).split(':')[1])
+	normal_num = int((header_line.split()[3]).split(':')[1])
+	categorized_psi = {Sample_type.norma : Categorized_data_frame([], normal_num), Sample_type.tumor_wild_type : Categorized_data_frame([], tumor_wild_type_num), Sample_type.tumor_mutant : Categorized_data_frame([], tumor_mutant_num)}
+	pos = []
+	for line in in_f:
+		categorized_psi[Sample_type.tumor_mutant].data.append(float(line.split()[1]))
+		categorized_psi[Sample_type.tumor_wild_type].data.append(float(line.split()[2]))
+		categorized_psi[Sample_type.norma].data.append(float(line.split()[3]))
+		pos.append(Pos_rec(line.split()[0]))
+	in_f.close()
+	return (pos, categorized_psi)
+
+def build_exon_interval_tree(pos):
+	interval_trees = {}
+	for p in pos:
+		if not interval_trees.has_key(p.chr_name):
+			interval_trees[p.chr_name] = IntervalTree()
+		interval_trees[p.chr_name][p.end1 : p.beg2] = {Sample_type.norma: [], Sample_type.tumor_wild_type: [], Sample_type.tumor_mutant : []} # doesn't include right border
+	return interval_trees
 
 def get_sample_classification(sample_names, samples_classification_fn):
 	sample_classification = {}
-	setd2_mutation_rates = {}
+	gene_mutation_rates = {}
 	fin = open(samples_classification_fn)
 	for line in fin:
 		s_name = line.split()[0]
 		sample_type = (line.split()[1]).strip()
 		if sample_type == 'Impact.high':
-			setd2_mutation_rates[s_name] = Impact.high
+			gene_mutation_rates[s_name] = Impact.high
 		elif sample_type == 'Impact.moderate':
-			setd2_mutation_rates[s_name] = Impact.moderate
+			gene_mutation_rates[s_name] = Impact.moderate
 		elif sample_type == 'Impact.low':
-			setd2_mutation_rates[s_name] = Impact.low
+			gene_mutation_rates[s_name] = Impact.low
 		elif sample_type == 'Impact.modifier':
-			setd2_mutation_rates[s_name] = Impact.modifier
+			gene_mutation_rates[s_name] = Impact.modifier
 		elif sample_type == 'Impact.no':
-			setd2_mutation_rates[s_name] = Impact.no
+			gene_mutation_rates[s_name] = Impact.no
 		elif sample_type == 'Impact.unknown':
-			setd2_mutation_rates[s_name] = Impact.unknown
+			gene_mutation_rates[s_name] = Impact.unknown
 		else:
-			setd2_mutation_rates[s_name] = Impact.unknown
+			gene_mutation_rates[s_name] = Impact.unknown
 			print 'Unknown type', sample_type
 	fin.close()
 	# barcodes https://wiki.nci.nih.gov/display/TCGA/TCGA+Barcode
@@ -113,10 +124,10 @@ def get_sample_classification(sample_names, samples_classification_fn):
 	sample_type = [int(s.split('-')[3][:2]) for s in sample_names]
 	for i in xrange(len(sample_type)):
 		if (sample_type[i] >= 1) and (sample_type[i] <= 9): # tumor
-			if setd2_mutation_rates.has_key(sample_names[i][:15]):
-				if setd2_mutation_rates[sample_names[i][:15]] == Impact.high:
-					sample_classification[sample_names[i]] = Sample_type.tumor_setd2
-				elif setd2_mutation_rates[sample_names[i][:15]] == Impact.no:
+			if gene_mutation_rates.has_key(sample_names[i][:15]):
+				if gene_mutation_rates[sample_names[i][:15]] == Impact.high:
+					sample_classification[sample_names[i]] = Sample_type.tumor_mutant
+				elif gene_mutation_rates[sample_names[i][:15]] == Impact.no:
 					sample_classification[sample_names[i]] = Sample_type.tumor_wild_type
 				else:
 					sample_classification[sample_names[i]] = Sample_type.tumor_unclassified
@@ -133,19 +144,12 @@ def process_methylation_data(methylation_fn, samples_classification_fn, interval
 	sample_names = methylation_f.readline().strip().split('\t')[1:]
 	methylation_f.readline()
 	sample_classification = get_sample_classification(list(Set(sample_names)), samples_classification_fn)
-	tumor_wt_num = 0
-	tumor_setd2_num = 0
-	normal_num = 0
+	sample_numbers = {Sample_type.tumor_mutant: 0, Sample_type.tumor_wild_type: 0, Sample_type.norma: 0}
 	for (s_name, s_type) in sample_classification.iteritems():
-		if s_type == Sample_type.tumor_wild_type:
-			tumor_wt_num += 1
-		elif s_type == Sample_type.tumor_setd2:
-			tumor_setd2_num += 1
-		elif s_type == Sample_type.norma:
-			normal_num += 1
-	print 'tumor_wt', tumor_wt_num, 'tumor_setd2', tumor_setd2_num, 'normal', normal_num
+		if sample_numbers.has_key(s_type):
+			sample_numbers[s_type] += 1
 	for line in methylation_f:
-		cur_meth = {Sample_type.norma: [], Sample_type.tumor_wild_type: [], Sample_type.tumor_setd2 : []}
+		cur_meth = {Sample_type.norma: [], Sample_type.tumor_wild_type: [], Sample_type.tumor_mutant : []}
 		data = line.strip().split('\t')[1:]
 		cur_chr = data[2]
 		cur_pos = int(data[3])
@@ -178,37 +182,38 @@ def process_methylation_data(methylation_fn, samples_classification_fn, interval
 					interval.data[cur_type] = float('nan')
 				else:
 					interval.data[cur_type] = numpy.mean(cur_type_meth)
-	return interval_trees
+	return (interval_trees, sample_numbers)
 
-def output_methylation_info(output_fn, interval_trees):
+def output_methylation_info(output_fn, interval_trees, sample_numbers):
 	outf = open(output_fn, 'w')
-	outf.write('Exon_pos\tTumor_wt\tTumor_setd2\tNorma\n')
+	outf.write('Exon_pos\tTumor_wild_type_methylation:' + str(sample_numbers[Sample_type.tumor_wild_type]) + '\tTumor_mutant_methylation:' + str(sample_numbers[Sample_type.tumor_mutant]) + '\tNorma_methylation:' + str(sample_numbers[Sample_type.norma]) + '\n')
 	for (chr_name, intervals) in interval_trees.iteritems():
 		for interval in intervals:
-			if not (numpy.isnan(interval.data[Sample_type.tumor_wild_type]) and numpy.isnan(interval.data[Sample_type.tumor_setd2]) and numpy.isnan(interval.data[Sample_type.norma])):
-				outf.write('chr' + chr_name + ':' + str(interval.begin) + ':' + str(interval.end) + '\t' + str(interval.data[Sample_type.tumor_wild_type]) + '\t' + str(interval.data[Sample_type.tumor_setd2]) + '\t' + str(interval.data[Sample_type.norma]) + '\n')
+			if not (numpy.isnan(interval.data[Sample_type.tumor_wild_type]) and numpy.isnan(interval.data[Sample_type.tumor_mutant]) and numpy.isnan(interval.data[Sample_type.norma])):
+				outf.write('chr' + chr_name + ':' + str(interval.begin) + ':' + str(interval.end) + '\t' + str(interval.data[Sample_type.tumor_wild_type]) + '\t' + str(interval.data[Sample_type.tumor_mutant]) + '\t' + str(interval.data[Sample_type.norma]) + '\n')
 	outf.close()
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory>'
+		print 'Usage:', sys.argv[0], '-d <data directory> -m <mutant gene name>'
 		exit()
 
-	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Analyze')
+	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Categorize methylation to normal, tumor with mut_gene mutation and tumor wild type for every exon')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
+	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
+	mutant_gene = args.mut_gene
 	
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
-		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
-		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_psi_average_data(in_fn)
+		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
+		(pos, _) = read_psi_average_data(in_fn)
 		interval_trees = build_exon_interval_tree(pos)
 		methylation_fn = os.path.join(d, os.path.basename(d) + '.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt')
-		samples_classification_fn = os.path.join(d, os.path.basename(d) + '_setd2_mutation_impact_for_samples.txt')
-		interval_trees = process_methylation_data(methylation_fn, samples_classification_fn, interval_trees)
-		output_fn = os.path.join(d, os.path.basename(d) + '_exon_methylation.txt')
-		output_methylation_info(output_fn, interval_trees)
-
+		samples_classification_fn = os.path.join(d, os.path.basename(d) + '_' + mutant_gene + '_mutation_impact_for_samples.txt')
+		(interval_trees, sample_numbers) = process_methylation_data(methylation_fn, samples_classification_fn, interval_trees)
+		output_fn = os.path.join(d, os.path.basename(d) + '_exon_methylation_averaged_by_' + mutant_gene + '.txt')
+		output_methylation_info(output_fn, interval_trees, sample_numbers)
 

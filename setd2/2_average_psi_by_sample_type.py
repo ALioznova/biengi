@@ -216,12 +216,12 @@ if __name__ == '__main__':
 		print 'Usage:', sys.argv[0], '-d <data directory> -m <mutant gene name>'
 		exit()
 
-	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Categorize to normal, tumor with mut_gene mutation and tumor wild type')
+	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Categorize PSI to normal, tumor with mut_gene mutation and tumor wild type for every exon')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
 	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
-	mutant_gene = args.mut_gene.strip()
+	mutant_gene = args.mut_gene
 
 	if not os.path.isdir(data_dir):
 		print >> sys.stderr, 'Not a directory ' + data_dir
