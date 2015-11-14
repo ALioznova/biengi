@@ -22,23 +22,31 @@ class Pos_rec:
 		else:
 			self.strand = False
 
-def read_psi_average_data(in_fn):
-	in_f = open(in_fn)
-	header_line = in_f.readline()
-	tumor_setd2_broken_num = int((header_line.split()[1]).split(':')[1])
-	tumor_num = int((header_line.split()[2]).split(':')[1])
-	normal_num = int((header_line.split()[3]).split(':')[1])
-	pos = []
-	tumor_setd2_broken = []
-	tumor = []
-	normal = []
-	for line in in_f:
-		pos.append(Pos_rec(line.split()[0]))
-		tumor_setd2_broken.append(float(line.split()[1]))
-		tumor.append(float(line.split()[2]))
-		normal.append(float(line.split()[3]))
-	in_f.close()
-	return (pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal)
+class Categorized_data_frame:
+	def __init__(self, data, samples_num):
+		self.data = data
+		self.samples_num = samples_num
+		self.current_arr_to_call_mean = []
+		
+	def count_mean(self):
+		if len(self.current_arr_to_call_mean) != 0:
+			self.data.append(numpy.nanmean(self.current_arr_to_call_mean))
+		else:
+			self.data.append(float('nan'))
+		self.current_arr_to_call_mean = []
+
+class Gene_expr:
+	def __init__(self, data, samples_num):
+		self.data = data
+		self.samples_num = samples_num
+		self.current_arr_to_call_mean = []
+		
+	def count_mean(self):
+		if len(self.current_arr_to_call_mean) != 0:
+			self.data = numpy.nanmean(self.current_arr_to_call_mean)
+		else:
+			self.data = float('nan')
+		self.current_arr_to_call_mean = []
 
 class Genes:
 	def __init__(self, name, locus, exons):
@@ -67,6 +75,56 @@ class Exons:
 			self.strand = False
 		self.begs = [int(c.split('-')[0]) for c in coords.split(',')]
 		self.ends = [int(c.split('-')[1]) for c in coords.split(',')]
+
+class OrderedEnum(Enum):
+	 def __ge__(self, other):
+		 if self.__class__ is other.__class__:
+			 return self.value >= other.value
+		 return NotImplemented
+	 def __gt__(self, other):
+		 if self.__class__ is other.__class__:
+			 return self.value > other.value
+		 return NotImplemented
+	 def __le__(self, other):
+		 if self.__class__ is other.__class__:
+			 return self.value <= other.value
+		 return NotImplemented
+	 def __lt__(self, other):
+		 if self.__class__ is other.__class__:
+			 return self.value < other.value
+		 return NotImplemented
+
+@unique
+class Impact(OrderedEnum):
+	high = 3
+	moderate = 2
+	low = 1
+	modifier = 0
+	no = -1
+	unknown = -2
+
+class Sample_type(Enum):
+	unknown = -1
+	norma = 0
+	tumor_wild_type = 1
+	tumor_unclassified = 2
+	tumor_mutant = 3
+
+def read_psi_average_data(in_fn):
+	in_f = open(in_fn)
+	header_line = in_f.readline()
+	tumor_mutant_num = int((header_line.split()[1]).split(':')[1])
+	tumor_wild_type_num = int((header_line.split()[2]).split(':')[1])
+	normal_num = int((header_line.split()[3]).split(':')[1])
+	categorized_psi = {Sample_type.norma : Categorized_data_frame([], normal_num), Sample_type.tumor_wild_type : Categorized_data_frame([], tumor_wild_type_num), Sample_type.tumor_mutant : Categorized_data_frame([], tumor_mutant_num)}
+	pos = []
+	for line in in_f:
+		categorized_psi[Sample_type.tumor_mutant].data.append(float(line.split()[1]))
+		categorized_psi[Sample_type.tumor_wild_type].data.append(float(line.split()[2]))
+		categorized_psi[Sample_type.norma].data.append(float(line.split()[3]))
+		pos.append(Pos_rec(line.split()[0]))
+	in_f.close()
+	return (pos, categorized_psi)
 
 def parse_genes_file(genes_file):
 	# data source: https://tcga-data.nci.nih.gov/docs/GAF/GAF.hg19.June2011.bundle/outputs/TCGA.hg19.June2011.gaf
@@ -176,72 +234,27 @@ def get_gene_dist(exon_to_genes, genes_data, pos):
 		gene_names.append(gene_name)
 	return (gene_beg_dist_bp, gene_beg_dist_perc, gene_names)
 
-class OrderedEnum(Enum):
-	 def __ge__(self, other):
-		 if self.__class__ is other.__class__:
-			 return self.value >= other.value
-		 return NotImplemented
-	 def __gt__(self, other):
-		 if self.__class__ is other.__class__:
-			 return self.value > other.value
-		 return NotImplemented
-	 def __le__(self, other):
-		 if self.__class__ is other.__class__:
-			 return self.value <= other.value
-		 return NotImplemented
-	 def __lt__(self, other):
-		 if self.__class__ is other.__class__:
-			 return self.value < other.value
-		 return NotImplemented
-
-@unique
-class Impact(OrderedEnum):
-	high = 3
-	moderate = 2
-	low = 1
-	modifier = 0
-	no = -1
-	unknown = -2
-
-class Gene_expr:
-	def __init__(self, name, tumor, tumor_num, tumor_setd2, tumor_setd2_num, normal, normal_num, val_arr):
-		self.name = name
-		self.tumor = tumor
-		self.tumor_num = tumor_num
-		self.tumor_setd2 = tumor_setd2
-		self.tumor_setd2_num = tumor_setd2_num
-		self.normal = normal
-		self.normal_num = normal_num
-		self.val_arr = val_arr
-
-class Sample_type(Enum):
-	unknown = -1
-	norma = 0
-	tumor_wild_type = 1
-	tumor_unclassified = 2
-	tumor_setd2 = 3
-
 def get_sample_classification(sample_names, samples_classification_fn):
 	sample_classification = {}
-	setd2_mutation_rates = {}
+	gene_mutation_rates = {}
 	fin = open(samples_classification_fn)
 	for line in fin:
 		s_name = line.split()[0]
 		sample_type = (line.split()[1]).strip()
 		if sample_type == 'Impact.high':
-			setd2_mutation_rates[s_name] = Impact.high
+			gene_mutation_rates[s_name] = Impact.high
 		elif sample_type == 'Impact.moderate':
-			setd2_mutation_rates[s_name] = Impact.moderate
+			gene_mutation_rates[s_name] = Impact.moderate
 		elif sample_type == 'Impact.low':
-			setd2_mutation_rates[s_name] = Impact.low
+			gene_mutation_rates[s_name] = Impact.low
 		elif sample_type == 'Impact.modifier':
-			setd2_mutation_rates[s_name] = Impact.modifier
+			gene_mutation_rates[s_name] = Impact.modifier
 		elif sample_type == 'Impact.no':
-			setd2_mutation_rates[s_name] = Impact.no
+			gene_mutation_rates[s_name] = Impact.no
 		elif sample_type == 'Impact.unknown':
-			setd2_mutation_rates[s_name] = Impact.unknown
+			gene_mutation_rates[s_name] = Impact.unknown
 		else:
-			setd2_mutation_rates[s_name] = Impact.unknown
+			gene_mutation_rates[s_name] = Impact.unknown
 			print 'Unknown type', sample_type
 	fin.close()
 	# barcodes https://wiki.nci.nih.gov/display/TCGA/TCGA+Barcode
@@ -249,10 +262,10 @@ def get_sample_classification(sample_names, samples_classification_fn):
 	sample_type = [int(s.split('-')[3][:2]) for s in sample_names]
 	for i in xrange(len(sample_type)):
 		if (sample_type[i] >= 1) and (sample_type[i] <= 9): # tumor
-			if setd2_mutation_rates.has_key(sample_names[i][:15]):
-				if setd2_mutation_rates[sample_names[i][:15]] == Impact.high:
-					sample_classification[sample_names[i]] = Sample_type.tumor_setd2
-				elif setd2_mutation_rates[sample_names[i][:15]] == Impact.no:
+			if gene_mutation_rates.has_key(sample_names[i][:15]):
+				if gene_mutation_rates[sample_names[i][:15]] == Impact.high:
+					sample_classification[sample_names[i]] = Sample_type.tumor_mutant
+				elif gene_mutation_rates[sample_names[i][:15]] == Impact.no:
 					sample_classification[sample_names[i]] = Sample_type.tumor_wild_type
 				else:
 					sample_classification[sample_names[i]] = Sample_type.tumor_unclassified
@@ -275,71 +288,35 @@ def process_gene_expression_file(gene_expression_fn, samples_classification_fn):
 		if gene_name.endswith('_calculated'):
 			gene_name = gene_name[:-len('_calculated')]
 		data = line.split('\t')[1:]
-		tumor_setd2_num = 0
-		tumor_num = 0
-		normal_num = 0
-		tumor_setd2_val = 0
-		tumor_val = 0
-		normal_val = 0
-		val_arr = []
+		categorized_expr = {Sample_type.norma : Gene_expr(float('nan'), 0), Sample_type.tumor_wild_type : Gene_expr(float('nan'), 0), Sample_type.tumor_mutant : Gene_expr(float('nan'), 0)}
 		for i in xrange(len(data)):
 			if i % 3 == 2:
-				if sample_classification[sample_names[i]] == Sample_type.tumor_setd2:
-					tumor_setd2_val += (float(data[i]))
-					tumor_setd2_num += 1
-					val_arr.append((tumor_setd2_val, sample_names[i]))
-				elif sample_classification[sample_names[i]] == Sample_type.tumor_wild_type:
-					tumor_val += (float(data[i]))
-					tumor_num += 1
-					val_arr.append((tumor_val, sample_names[i]))
-				elif sample_classification[sample_names[i]] == Sample_type.norma:
-					normal_val += (float(data[i]))
-					normal_num += 1
-					val_arr.append((normal_val, sample_names[i]))
-				else:
-					continue
-		if tumor_setd2_num != 0:
-			tumor_setd2_v = (float(tumor_setd2_val)/tumor_setd2_num)
-		else:
-			tumor_setd2_v = (float('nan'))
-		if tumor_num != 0:
-			tumor_v = (float(tumor_val)/tumor_num)
-		else:
-			tumor_v = (float('nan'))
-		if normal_num != 0:
-			normal_v = (float(normal_val)/normal_num)
-		else:
-			normal_v = (float('nan'))
-		gene_expression[gene_name] = Gene_expr(gene_name, tumor_v, tumor_num, tumor_setd2_v, tumor_setd2_num, normal_v, normal_num, val_arr)
+				if categorized_expr.has_key(sample_classification[sample_names[i]]):
+					categorized_expr[sample_classification[sample_names[i]]].current_arr_to_call_mean.append(float(data[i]))
+					categorized_expr[sample_classification[sample_names[i]]].samples_num += 1
+		for (cur_type, cur_expr_data) in categorized_expr.iteritems():
+			cur_expr_data.count_mean()
+		gene_expression[gene_name] = categorized_expr
 	fin.close()
-	return (gene_expression, sample_classification)
+	return gene_expression
 
-def get_gene_expression(gene_expression_fn, exon_to_genes, pos, samples_classification_fn):
-	(gene_expression_data, sample_classification) = process_gene_expression_file(gene_expression_fn, samples_classification_fn)
-	gene_expr = Set()
-	tumor_setd2 = []
-	tumor = []
-	normal = []
+def get_exons_gene_expression(gene_expression_fn, exon_to_genes, pos, samples_classification_fn):
+	gene_expression_data = process_gene_expression_file(gene_expression_fn, samples_classification_fn)
+	categorized_expr = {Sample_type.norma : [], Sample_type.tumor_wild_type : [], Sample_type.tumor_mutant : []}
 	for p in pos:
-		tumor_setd2_cur = []
-		tumor_cur = []
-		normal_cur = []
+		for sample_type, expr_data in categorized_expr.iteritems():
+			categorized_expr[sample_type].append([])
 		if exon_to_genes[(p.chr_name, p.strand)].has_key((p.end1, p.beg2)):
 			for gene in list(exon_to_genes[(p.chr_name, p.strand)][(p.end1, p.beg2)]):
 				if not gene_expression_data.has_key(gene):
 					continue
-				tumor_setd2_cur.append(gene_expression_data[gene].tumor_setd2)
-				tumor_cur.append(gene_expression_data[gene].tumor)
-				normal_cur.append(gene_expression_data[gene].normal)
-				gene_expr.add(gene_expression_data[gene])
-		tumor_setd2.append(tumor_setd2_cur)
-		tumor.append(tumor_cur)
-		normal.append(normal_cur)
-	return (gene_expr, sample_classification, tumor_setd2, tumor, normal)
+				for sample_type, expr_data in categorized_expr.iteritems():
+					categorized_expr[sample_type][-1].append(gene_expression_data[gene][sample_type].data)
+	return categorized_expr
 
-def output_expression_and_dist_file(out_fn, pos, gene_beg_dist_bp, gene_beg_dist_perc, gene_expression_fn, tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr, gene_names):
+def output_expression_and_dist_file(out_fn, pos, gene_beg_dist_bp, gene_beg_dist_perc, gene_expression_fn, categorized_expr, gene_names):
 	fout = open(out_fn, 'w')
-	fout.write('Pos:\tGene_dist_bp:\tGene_dist_perc:\tExpr_tumorsetd2:\tExpr_tumor_wt:\tExpr_normal:\tGene_name:\n')
+	fout.write('Pos:\tDist_to_gene_start_in_bp:\tDist_to_gene_start_in_percent_of_gene_len:\tGene_expression_in_tumor_mutant:\tGene_expression_in_tumor_wild_type:\tGene_expression_in_normal:\tGene_name:\n')
 	for i in xrange(len(pos)):
 		new_line = pos[i].desc + '\t'
 		for dst in gene_beg_dist_bp[i]:
@@ -353,19 +330,19 @@ def output_expression_and_dist_file(out_fn, pos, gene_beg_dist_bp, gene_beg_dist
 			new_line = new_line[:-1]
 		if gene_expression_fn:
 			new_line += '\t'
-			for expr in tumor_setd2_gene_expr[i]:
+			for expr in categorized_expr[Sample_type.tumor_mutant][i]:
 				new_line += (str(expr) + ',')
-			if len(tumor_setd2_gene_expr[i]) != 0:
+			if len(categorized_expr[Sample_type.tumor_mutant][i]) != 0:
 				new_line = new_line[:-1]
 			new_line += '\t'
-			for expr in tumor_gene_expr[i]:
+			for expr in categorized_expr[Sample_type.tumor_wild_type][i]:
 				new_line += (str(expr) + ',')
-			if len(tumor_gene_expr[i]) != 0:
+			if len(categorized_expr[Sample_type.tumor_wild_type][i]) != 0:
 				new_line = new_line[:-1]
 			new_line += '\t'
-			for expr in normal_gene_expr[i]:
+			for expr in categorized_expr[Sample_type.norma][i]:
 				new_line += (str(expr) + ',')
-			if len(normal_gene_expr[i]) != 0:
+			if len(categorized_expr[Sample_type.norma][i]) != 0:
 				new_line = new_line[:-1]
 		else:
 			new_line += '\t\t\t'
@@ -380,15 +357,17 @@ def output_expression_and_dist_file(out_fn, pos, gene_beg_dist_bp, gene_beg_dist
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory> -g <gene annotation file>'
+		print 'Usage:', sys.argv[0], '-d <data directory> -g <gene annotation file>  -m <mutant gene name>'
 		exit()
 
-	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Analyze')
+	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Find distances from exons to genes and corresponding gene expression')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
 	parser.add_argument('-g', '--genes', help='gene annotation file', required=True)
+	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
 	genes_fn = args.genes
+	mutant_gene = args.mut_gene.strip()
 	
 	if not os.path.isfile(genes_fn):
 		print 'No such file', genes_fn
@@ -400,20 +379,20 @@ if __name__ == '__main__':
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
-		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
-		(pos, tumor_setd2_broken_num, tumor_setd2_broken, tumor_num, tumor, normal_num, normal) = read_psi_average_data(in_fn)
-		exon_to_genes = exon_to_gene_names(exon_dict, interval_trees, pos)
+		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
 
+		(pos, categorized_psi) = read_psi_average_data(in_fn)
+		exon_to_genes = exon_to_gene_names(exon_dict, interval_trees, pos)
 		(gene_beg_dist_bp, gene_beg_dist_perc, gene_names) = get_gene_dist(exon_to_genes, genes_data, pos)
 
 		gene_expression_fn = None
-		(tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr) = (None, None, None)
+		categorized_expr = None
 		for elem in os.listdir(d):
 			if 'gene_expression' in elem:
 				gene_expression_fn = os.path.join(d, elem)
 		if gene_expression_fn:
-			samples_classification_fn = os.path.join(d, os.path.basename(d) + '_setd2_mutation_impact_for_samples.txt')
-			(gene_expr, sample_classification, tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr) = get_gene_expression(gene_expression_fn, exon_to_genes, pos, samples_classification_fn)
-
-		output_expression_and_dist_file(os.path.join(d, os.path.basename(d) + '_expression_and_dist.txt'), pos, gene_beg_dist_bp, gene_beg_dist_perc, gene_expression_fn, tumor_setd2_gene_expr, tumor_gene_expr, normal_gene_expr, gene_names)
+			samples_classification_fn = os.path.join(d, os.path.basename(d) + '_' + mutant_gene + '_mutation_impact_for_samples.txt')
+			categorized_expr = get_exons_gene_expression(gene_expression_fn, exon_to_genes, pos, samples_classification_fn)
+		out_fn = os.path.join(d, os.path.basename(d) + '_expression_and_dist_split_by_' + mutant_gene + '.txt')
+		output_expression_and_dist_file(out_fn, pos, gene_beg_dist_bp, gene_beg_dist_perc, gene_expression_fn, categorized_expr, gene_names)
 

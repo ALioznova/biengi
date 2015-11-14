@@ -57,7 +57,7 @@ class Categorized_data_frame:
 		self.samples_num = samples_num
 		self.current_arr_to_call_mean = []
 		
-	def count_psi(self):
+	def count_mean(self):
 		if len(self.current_arr_to_call_mean) != 0:
 			self.data.append(numpy.nanmean(self.current_arr_to_call_mean))
 		else:
@@ -199,7 +199,7 @@ def compute(psi_filename, maf_dir, mut_gene):
 			if categorized_psi.has_key(cur_type) and ~numpy.isnan(elem.psi[i]):
 				categorized_psi[cur_type].current_arr_to_call_mean.append(elem.psi[i])
 		for (cur_type, cur_psi_data) in categorized_psi.iteritems():
-			cur_psi_data.count_psi()
+			cur_psi_data.count_mean()
 	return (pos, categorized_psi)
 
 def output_sample_avarage_arrays(pos, categorized_psi, out_fn):

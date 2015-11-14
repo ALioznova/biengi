@@ -28,7 +28,6 @@ class Categorized_data_frame:
 	def __init__(self, data, samples_num):
 		self.data = data
 		self.samples_num = samples_num
-		self.current_arr_to_call_mean = []
 
 class Sample_type(Enum):
 	norma = 0
@@ -108,7 +107,7 @@ if __name__ == '__main__':
 		print 'Usage:', sys.argv[0], '-d <data directory> -p <pictures directory>  -m <mutant gene name>'
 		exit()
 
-	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Analyze')
+	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Build histogram of average PSI data and delta PSI tumor and norma')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
 	parser.add_argument('-p', '--pics_dir', help='pictures directory', required=True)
 	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
