@@ -66,6 +66,7 @@ class Categorized_data_frame:
 
 def get_mutation_impact_dict():
 	# information source: http://www.ensembl.org/info/genome/variation/predicted_data.html#consequences
+	# http://snpeff.sourceforge.net/SnpEff_manual.html
 	# useful tool: http://mutationassessor.org/
 	# one more tool: http://stothard.afns.ualberta.ca/downloads/NGS-SNP/annotate_SNPs.html
 	# and one more tool: ftp://hgdownload.cse.ucsc.edu/apache/htdocs-rr/goldenpath/help/hgVaiHelpText.html
@@ -90,7 +91,7 @@ def get_mutation_impact_dict():
 	mutation_impact_dict['coding_sequence_variant'] = Impact.modifier
 	mutation_impact_dict['mature_miRNA_variant'] = Impact.modifier
 	mutation_impact_dict['5_prime_UTR_variant'] = Impact.modifier
-	mutation_impact_dict['3_prime_UTR_variant'] = Impact.modifier # added
+	mutation_impact_dict['3_prime_UTR_variant'] = Impact.modifier
 	mutation_impact_dict['non_coding_transcript_exon_variant'] = Impact.modifier
 	mutation_impact_dict['intron_variant'] = Impact.modifier
 	mutation_impact_dict['NMD_transcript_variant'] = Impact.modifier
@@ -106,6 +107,7 @@ def get_mutation_impact_dict():
 	mutation_impact_dict['regulatory_region_variant'] = Impact.modifier
 	mutation_impact_dict['feature_truncation'] = Impact.modifier
 	mutation_impact_dict['intergenic_variant'] = Impact.modifier
+	mutation_impact_dict['initiator_codon_variant'] = Impact.low
 	return mutation_impact_dict
 
 def find_mut_gene_mutation_impact(s_file_name, mutation_impact_dict, mut_gene):
