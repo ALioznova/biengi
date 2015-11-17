@@ -134,9 +134,9 @@ def prepare_data_for_plot_delta_expr(x_arr_of_arr1, x_arr_of_arr2, x_arr_of_arr3
 		if numpy.isnan(y_arr1[i]) or numpy.isnan(y_arr2[i]) or numpy.isnan(y_arr3[i]):
 			continue
 #		x.append(float(x_arr_of_arr1[i][0] - x_arr_of_arr2[i][0]))
-		x.append(float(x_arr_of_arr1[i][0] + x_arr_of_arr2[i][0])/2.0)
+		x.append(float(x_arr_of_arr1[i][0] + x_arr_of_arr2[i][0] + x_arr_of_arr3[i][0])/3.0)
 		y.append(y_arr1[i] - y_arr2[i])
-	return (x, y) 
+	return (x, y)
 
 def plot_points(fig_path, plot_label, xscale, xy_data_frames):
 	will_del_index = []
@@ -287,6 +287,9 @@ if __name__ == '__main__':
 			plot_points(dist_perc_delta_path, 'delta PSI vs average expression, ' + os.path.basename(d), 'linear', df)
 			dist_perc_delta_bin_path = os.path.join(expr_average_dir, os.path.basename(d) + '_delta_psi_vs_av_expression_bin.png')
 			plot_bins(dist_perc_delta_bin_path, 'delta PSI vs average expression for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, (-1.0, 1.0), df)
+			for elem in df:
+				for bin_num in xrange(len(elem.y_split)):
+					print bin_num, elem.label, numpy.std(elem.y_split[bin_num])
 
 		# distance in bp
 		df = [el for el in [Data_frame_xy('Tumor', 'blue', prepare_data_for_plot(dist_bp, categorized_psi[Sample_type.tumor_wild_type].data)), Data_frame_xy('Normal', 'chartreuse', prepare_data_for_plot(dist_bp, categorized_psi[Sample_type.norma].data)), Data_frame_xy('Tumor_setd2', 'red', prepare_data_for_plot(dist_bp, categorized_psi[Sample_type.tumor_mutant].data))] if el.num > 0]
