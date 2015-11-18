@@ -5,6 +5,7 @@ import sys
 import argparse
 import numpy
 from enum import Enum, unique
+import random
 
 class Data_frame:
 	def __init__(self, description, psi):
@@ -162,7 +163,7 @@ def get_mut_gene_mutation_rate(maf_dir, sample_names, mut_gene):
 		gene_mutation_rate[sample] = mutation_impact
 	return gene_mutation_rate
 
-def compute(psi_filename, maf_dir, mut_gene):
+def process_psi_file(psi_filename, maf_dir, mut_gene):
 	def get_sample_type(sample_type, sample_name, gene_mutation_rates):
 		if (sample_type >= 1) and (sample_type <= 9): # tumor
 			if gene_mutation_rates.has_key(sample_name):
@@ -189,15 +190,44 @@ def compute(psi_filename, maf_dir, mut_gene):
 		data.append(Data_frame(line.split()[0], line.split()[1:]))
 		pos.append(line.split()[0])
 	inf.close()
+	types = []
+	for i in xrange(len(sample_type)):
+		types.append(get_sample_type(sample_type[i], sample_names[i], gene_mutation_rates))
+	return (pos, data, types)
+
+def compute(psi_filename, maf_dir, mut_gene, filter_for_equal_size = False):
+	(pos, data, sample_type) = process_psi_file(psi_filename, maf_dir, mut_gene)
+	if filter_for_equal_size:
+		indexes = {Sample_type.norma : [], Sample_type.tumor_wild_type : [], Sample_type.tumor_mutant : []}
+		for i in xrange(len(sample_type)):
+			if sample_type[i] in indexes.keys():
+				indexes[sample_type[i]].append(i)
+		equal_size = min(len(indexes[Sample_type.tumor_wild_type]), len(indexes[Sample_type.tumor_mutant]))
+		random.shuffle(indexes[Sample_type.tumor_wild_type])
+		random.shuffle(indexes[Sample_type.tumor_mutant])
+		indexes[Sample_type.tumor_wild_type] = indexes[Sample_type.tumor_wild_type][:equal_size]
+		indexes[Sample_type.tumor_mutant] = indexes[Sample_type.tumor_mutant][:equal_size]
+		equal_size_sample_type = []
+		for i in xrange(len(sample_type)):
+			for key in indexes.iterkeys():
+				if i in indexes[key]:
+					equal_size_sample_type.append(sample_type[i])
+		for elem in data:
+			equal_size_psi = []
+			for i in xrange(len(sample_type)):
+				for key in indexes.iterkeys():
+					if i in indexes[key]:
+						equal_size_psi.append(elem.psi[i])
+			elem.psi = equal_size_psi
+		sample_type = equal_size_sample_type
 
 	categorized_psi = {Sample_type.norma : Categorized_data_frame([], 0), Sample_type.tumor_wild_type : Categorized_data_frame([], 0), Sample_type.tumor_mutant : Categorized_data_frame([], 0)}
-	for i in xrange(len(sample_type)):
-		cur_type = get_sample_type(sample_type[i], sample_names[i], gene_mutation_rates)
+	for cur_type in sample_type:
 		if categorized_psi.has_key(cur_type):
 			categorized_psi[cur_type].samples_num += 1
 	for elem in data:
 		for i in xrange(len(sample_type)):
-			cur_type = get_sample_type(sample_type[i], sample_names[i], gene_mutation_rates)
+			cur_type = sample_type[i]
 			if categorized_psi.has_key(cur_type) and ~numpy.isnan(elem.psi[i]):
 				categorized_psi[cur_type].current_arr_to_call_mean.append(elem.psi[i])
 		for (cur_type, cur_psi_data) in categorized_psi.iteritems():
@@ -218,9 +248,11 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Categorize PSI to normal, tumor with mut_gene mutation and tumor wild type for every exon')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
+	parser.add_argument('-c', '--comp_dir', help='computations directory', required=True)
 	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
+	comp_dir = args.comp_dir
 	mutant_gene = args.mut_gene
 
 	if not os.path.isdir(data_dir):
@@ -230,19 +262,24 @@ if __name__ == '__main__':
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
+		d_comp = os.path.join(comp_dir, os.path.basename(d))
+		if not os.path.exists(os.path.join(d_comp, mutant_gene)):
+			os.mkdir(os.path.join(d_comp, mutant_gene))
+
 		for elem in os.listdir(d):
 			if 'Mutation_Packager_Oncotated_Raw_Calls' in elem:
 				maf_dir = os.path.join(d, elem)
 		if not os.path.exists(maf_dir):
 			print 'no such dir:', maf_dir
 
-		sample_types_fn = os.path.join(d, os.path.basename(d) + '_' + mutant_gene + '_mutation_impact_for_samples.txt')
+		sample_types_fn = os.path.join(os.path.join(d_comp, mutant_gene), os.path.basename(d) + '_' + mutant_gene + '_mutation_impact_for_samples.txt')
 		output_mut_gene_mutation_rates(maf_dir, sample_types_fn, mutant_gene)
 
-		psi_filename = os.path.join(d, os.path.basename(d) + '_PSI.txt')
+		psi_filename = os.path.join(d_comp, os.path.basename(d) + '_PSI.txt')
 		if not os.path.exists(psi_filename):
 			print 'no such file:', psi_filename
 			continue
-		(pos, categorized_psi) = compute(psi_filename, maf_dir, mutant_gene)
-		out_fn = os.path.join(d, os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
+		(pos, categorized_psi) = compute(psi_filename, maf_dir, mutant_gene, True)
+		out_fn = os.path.join(os.path.join(d_comp, mutant_gene), os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
 		output_sample_avarage_arrays(pos, categorized_psi, out_fn)
+

@@ -7,6 +7,7 @@ import numpy
 from sets import Set
 from intervaltree import Interval, IntervalTree
 from enum import Enum, unique
+import random
 
 class Pos_rec:
 	def __init__(self, description):
@@ -277,10 +278,23 @@ def get_sample_classification(sample_names, samples_classification_fn):
 			sample_classification[sample_names[i]] = Sample_type.unknown
 	return sample_classification
 
-def process_gene_expression_file(gene_expression_fn, samples_classification_fn):
+def process_gene_expression_file(gene_expression_fn, samples_classification_fn, filter_for_equal_size = False):
 	fin = open(gene_expression_fn)
 	sample_names = fin.readline().split('\t')[1:]
 	sample_classification = get_sample_classification(sample_names, samples_classification_fn)
+	if filter_for_equal_size:
+		sample_type = []
+		for name in sample_names:
+			sample_type.append(sample_classification[name])
+		indexes = {Sample_type.norma : [], Sample_type.tumor_wild_type : [], Sample_type.tumor_mutant : []}
+		for i in xrange(len(sample_type)):
+			if sample_type[i] in indexes.keys():
+				indexes[sample_type[i]].append(i)
+		equal_size = min(len(indexes[Sample_type.tumor_wild_type]), len(indexes[Sample_type.tumor_mutant]))
+		random.shuffle(indexes[Sample_type.tumor_wild_type])
+		random.shuffle(indexes[Sample_type.tumor_mutant])
+		indexes[Sample_type.tumor_wild_type] = indexes[Sample_type.tumor_wild_type][:equal_size]
+		indexes[Sample_type.tumor_mutant] = indexes[Sample_type.tumor_mutant][:equal_size]
 	fin.readline()
 	gene_expression = {}
 	for line in fin:
@@ -290,10 +304,16 @@ def process_gene_expression_file(gene_expression_fn, samples_classification_fn):
 		data = line.split('\t')[1:]
 		categorized_expr = {Sample_type.norma : Gene_expr(float('nan'), 0), Sample_type.tumor_wild_type : Gene_expr(float('nan'), 0), Sample_type.tumor_mutant : Gene_expr(float('nan'), 0)}
 		for i in xrange(len(data)):
-			if i % 3 == 2:
-				if categorized_expr.has_key(sample_classification[sample_names[i]]):
-					categorized_expr[sample_classification[sample_names[i]]].current_arr_to_call_mean.append(float(data[i]))
-					categorized_expr[sample_classification[sample_names[i]]].samples_num += 1
+			if i % 3 == 2 and categorized_expr.has_key(sample_classification[sample_names[i]]):
+				cur_type = sample_classification[sample_names[i]]
+				if filter_for_equal_size:
+					for key in indexes.iterkeys():
+						if i in indexes[key]:
+							categorized_expr[cur_type].current_arr_to_call_mean.append(float(data[i]))
+							categorized_expr[cur_type].samples_num += 1
+				else:
+					categorized_expr[cur_type].current_arr_to_call_mean.append(float(data[i]))
+					categorized_expr[cur_type].samples_num += 1
 		for (cur_type, cur_expr_data) in categorized_expr.iteritems():
 			cur_expr_data.count_mean()
 		gene_expression[gene_name] = categorized_expr
@@ -301,7 +321,7 @@ def process_gene_expression_file(gene_expression_fn, samples_classification_fn):
 	return gene_expression
 
 def get_exons_gene_expression(gene_expression_fn, exon_to_genes, pos, samples_classification_fn):
-	gene_expression_data = process_gene_expression_file(gene_expression_fn, samples_classification_fn)
+	gene_expression_data = process_gene_expression_file(gene_expression_fn, samples_classification_fn, True)
 	categorized_expr = {Sample_type.norma : [], Sample_type.tumor_wild_type : [], Sample_type.tumor_mutant : []}
 	for p in pos:
 		for sample_type, expr_data in categorized_expr.iteritems():
@@ -362,10 +382,12 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Find distances from exons to genes and corresponding gene expression')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
+	parser.add_argument('-c', '--comp_dir', help='computations directory', required=True)
 	parser.add_argument('-g', '--genes', help='gene annotation file', required=True)
 	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
+	comp_dir = args.comp_dir
 	genes_fn = args.genes
 	mutant_gene = args.mut_gene
 	
@@ -379,7 +401,8 @@ if __name__ == '__main__':
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
-		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
+		d_comp = os.path.join(comp_dir, os.path.basename(d))
+		in_fn = os.path.join(os.path.join(d_comp, mutant_gene), os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
 
 		(pos, categorized_psi) = read_psi_average_data(in_fn)
 		exon_to_genes = exon_to_gene_names(exon_dict, interval_trees, pos)
@@ -391,8 +414,8 @@ if __name__ == '__main__':
 			if 'gene_expression' in elem:
 				gene_expression_fn = os.path.join(d, elem)
 		if gene_expression_fn:
-			samples_classification_fn = os.path.join(d, os.path.basename(d) + '_' + mutant_gene + '_mutation_impact_for_samples.txt')
+			samples_classification_fn = os.path.join(os.path.join(d_comp, mutant_gene), os.path.basename(d) + '_' + mutant_gene + '_mutation_impact_for_samples.txt')
 			categorized_expr = get_exons_gene_expression(gene_expression_fn, exon_to_genes, pos, samples_classification_fn)
-		out_fn = os.path.join(d, os.path.basename(d) + '_expression_and_dist_split_by_' + mutant_gene + '.txt')
+		out_fn = os.path.join(os.path.join(d_comp, mutant_gene), os.path.basename(d) + '_expression_and_dist_split_by_' + mutant_gene + '.txt')
 		output_expression_and_dist_file(out_fn, pos, gene_beg_dist_bp, gene_beg_dist_perc, gene_expression_fn, categorized_expr, gene_names)
 

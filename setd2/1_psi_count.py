@@ -111,23 +111,32 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='PSI count')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
+	parser.add_argument('-c', '--comp_dir', help='computations directory', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
+	comp_dir = args.comp_dir
 
 	if not os.path.isdir(data_dir):
 		print >> sys.stderr, 'Not a directory ' + data_dir
 		sys.exit(1)
 
+	if not os.path.exists(comp_dir):
+		os.mkdir(comp_dir)
+
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
+		d_out = os.path.join(comp_dir, os.path.basename(d))
+		if not os.path.exists(d_out):
+			os.mkdir(d_out)
+
 		for elem in os.listdir(d):
 			if 'junction_quantification' in elem:
 				in_f = os.path.join(d, elem)
 		if not os.path.exists(in_f):
 			print 'no such file:', in_f
 			continue
-		out_f = os.path.join(d, os.path.basename(d) + '_PSI.txt')
+		out_f = os.path.join(d_out, os.path.basename(d) + '_PSI.txt')
 		compute(in_f, out_f)
 		
 

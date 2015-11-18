@@ -108,11 +108,11 @@ if __name__ == '__main__':
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Build histogram of average PSI data and delta PSI tumor and norma')
-	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
+	parser.add_argument('-c', '--comp_dir', help='computations directory', required=True)
 	parser.add_argument('-p', '--pics_dir', help='pictures directory', required=True)
 	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
 	args = parser.parse_args()
-	data_dir = args.data_dir
+	comp_dir = args.comp_dir
 	pics_dir = args.pics_dir
 	mutant_gene = args.mut_gene
 
@@ -124,21 +124,21 @@ if __name__ == '__main__':
 	if not os.path.exists(delta_hist_dir):
 		os.mkdir(delta_hist_dir)
 
-	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
+	data_dir_list = [os.path.join(comp_dir, d) for d in os.listdir(comp_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
-		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
+		in_fn = os.path.join(os.path.join(d, mutant_gene), os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
 		categorized_psi = read_psi_average_data(in_fn)
 
 		df = [el for el in [Data_frame('Tumor_wild_type, ' + str(categorized_psi[Sample_type.tumor_wild_type].samples_num) + ' samples', 'blue', categorized_psi[Sample_type.tumor_wild_type].data), Data_frame('Normal, ' + str(categorized_psi[Sample_type.norma].samples_num) + ' samples', 'chartreuse', categorized_psi[Sample_type.norma].data), Data_frame('Tumor_mutant, ' + str(categorized_psi[Sample_type.tumor_mutant].samples_num) + ' samples', 'red', categorized_psi[Sample_type.tumor_mutant].data)] if el.num > 0]
 		filter_data(df)
 		hist_path = os.path.join(hist_dir, os.path.basename(d) + '_hist.png')
-		draw_hist(df, hist_path, 'PSI for ' + os.path.basename(d), 15)
+		draw_hist(df, hist_path, mutant_gene + '. PSI for ' + os.path.basename(d), 15)
 
 		diff_df = get_difference_data(categorized_psi)
 		if len(diff_df) > 0:
 			delta_path = os.path.join(delta_hist_dir, os.path.basename(d) + '_delta_hist.png')
-			draw_hist(diff_df.values(), delta_path, 'Delta PSI for ' + os.path.basename(d), 25)
+			draw_hist(diff_df.values(), delta_path, mutant_gene + '. Delta PSI for ' + os.path.basename(d), 25)
 
 """		U, pval = stats.mannwhitneyu(tumor_setd2_broken_filtered, tumor_filtered)
 		pval *= 2 # two-sided hypothesis
