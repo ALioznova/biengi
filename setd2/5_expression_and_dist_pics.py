@@ -259,7 +259,8 @@ def plot_std_and_ci_for_expr(data_frames, pic_path, plot_title, alpha):
 
 	fig, ax = plt.subplots(nrows=1, sharex=True)
 	for elem in std_data:
-		ax.errorbar(elem.x, elem.y, yerr=elem.asymmetric_error, fmt='o', color=elem.color, label=elem.label, capsize=7, elinewidth=2)
+		ax.errorbar(elem.x, elem.y, yerr=elem.asymmetric_error, fmt='-o', color=elem.color, label=elem.label, capsize=7, elinewidth=2)
+		ax.fill_between(elem.x, numpy.array(elem.y)-numpy.array(elem.asymmetric_error[0]), numpy.array(elem.y)+numpy.array(elem.asymmetric_error[1]), alpha=0.5, facecolor=elem.color)
 	ax.legend(loc='best')
 	ax.set_title(plot_title)
 	ax.set_xscale('log')
