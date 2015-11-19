@@ -161,7 +161,10 @@ def process_methylation_data(methylation_fn, samples_classification_fn, interval
 	sample_numbers = {Sample_type.tumor_mutant: 0, Sample_type.tumor_wild_type: 0, Sample_type.norma: 0}
 	for (s_name, s_type) in sample_classification.iteritems():
 		if sample_numbers.has_key(s_type):
-			sample_numbers[s_type] += 1
+			sample_numbers[Sample_type.tumor_wild_type] = equal_size
+			sample_numbers[Sample_type.tumor_mutant] = equal_size
+	if filter_for_equal_size:
+		sample_numbers[s_type] += 1
 	for line in methylation_f:
 		cur_meth = {Sample_type.norma: [], Sample_type.tumor_wild_type: [], Sample_type.tumor_mutant : []}
 		data = line.strip().split('\t')[1:]
