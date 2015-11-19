@@ -270,7 +270,7 @@ def plot_std_and_ci_for_expr(data_frames, pic_path, plot_title, alpha):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory> -p <pictures directory>  -m <mutant gene name>'
+		print 'Usage:', sys.argv[0], '-c <computations directory> -p <pictures directory>  -m <mutant gene name>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Build plots for psi vs distance to gene start (in bp and percents) and for psi vs gene expression, data is split to tumor_mutant, tumor_wild_type and norma')

@@ -106,7 +106,7 @@ def compute(in_fn, out_fn):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory> '
+		print 'Usage:', sys.argv[0], '-d <data directory> -c <computations directory>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='PSI count')

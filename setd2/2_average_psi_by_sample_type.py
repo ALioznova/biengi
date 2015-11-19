@@ -129,6 +129,7 @@ def find_mut_gene_mutation_impact(s_file_name, mutation_impact_dict, mut_gene):
 	if mutation_type_index == None:
 		return Impact.unknown
 	impacts = [Impact.no]
+	setd2_impacts = [Impact.no]
 	for line in maf_file:
 		if line.startswith(mut_gene.upper() + '\t'):
 			mutation_type = line.split('\t')[mutation_type_index]
@@ -137,7 +138,19 @@ def find_mut_gene_mutation_impact(s_file_name, mutation_impact_dict, mut_gene):
 				continue
 			mut_gene_mutation_impact = mutation_impact_dict[mutation_type]
 			impacts.append(mut_gene_mutation_impact)
-	return max(impacts)
+		if line.startswith('SETD2\t'):
+			mutation_type = line.split('\t')[mutation_type_index]
+			if not mutation_impact_dict.has_key(mutation_type):
+				print 'Unknown mutation type:', mutation_type
+				continue
+			mut_gene_mutation_impact = mutation_impact_dict[mutation_type]
+			setd2_impacts.append(mut_gene_mutation_impact)
+	mut_gene_impact = max(impacts)
+	setd2_impact = max(setd2_impacts)
+	if mut_gene.upper() != 'SETD2':
+		if setd2_impact != Impact.no:
+			mut_gene_impact = Impact.unknown # mutation both in mut_gene and setd2
+	return mut_gene_impact
 
 def output_mut_gene_mutation_rates(maf_dir, out_file, mut_gene):
 	mutation_impact_dict = get_mutation_impact_dict()
@@ -243,7 +256,7 @@ def output_sample_avarage_arrays(pos, categorized_psi, out_fn):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory> -m <mutant gene name>'
+		print 'Usage:', sys.argv[0], '-d <data directory> -c <computations directory> -m <mutant gene name>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Categorize PSI to normal, tumor with mut_gene mutation and tumor wild type for every exon')

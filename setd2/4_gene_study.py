@@ -377,7 +377,7 @@ def output_expression_and_dist_file(out_fn, pos, gene_beg_dist_bp, gene_beg_dist
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory> -g <gene annotation file> -m <mutant gene name>'
+		print 'Usage:', sys.argv[0], '-d <data directory> -c <computations directory> -g <gene annotation file> -m <mutant gene name>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Find distances from exons to genes and corresponding gene expression')

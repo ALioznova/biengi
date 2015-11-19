@@ -104,7 +104,7 @@ def get_difference_data(categorized_psi):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory> -p <pictures directory>  -m <mutant gene name>'
+		print 'Usage:', sys.argv[0], '-c <computations directory> -p <pictures directory>  -m <mutant gene name>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Build histogram of average PSI data and delta PSI tumor and norma')

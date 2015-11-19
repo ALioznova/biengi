@@ -7,6 +7,7 @@ import numpy
 from sets import Set
 from enum import Enum, unique
 from intervaltree import Interval, IntervalTree
+import random
 
 class Pos_rec:
 	def __init__(self, description):
@@ -139,11 +140,24 @@ def get_sample_classification(sample_names, samples_classification_fn):
 			sample_classification[sample_names[i]] = Sample_type.unknown
 	return sample_classification
 
-def process_methylation_data(methylation_fn, samples_classification_fn, interval_trees):
+def process_methylation_data(methylation_fn, samples_classification_fn, interval_trees, filter_for_equal_size = False):
 	methylation_f = open(methylation_fn)
 	sample_names = methylation_f.readline().strip().split('\t')[1:]
 	methylation_f.readline()
 	sample_classification = get_sample_classification(list(Set(sample_names)), samples_classification_fn)
+	if filter_for_equal_size:
+		sample_type = []
+		for name in sample_names:
+			sample_type.append(sample_classification[name])
+		indexes = {Sample_type.norma : [], Sample_type.tumor_wild_type : [], Sample_type.tumor_mutant : []}
+		for i in xrange(len(sample_type)):
+			if sample_type[i] in indexes.keys():
+				indexes[sample_type[i]].append(i)
+		equal_size = min(len(indexes[Sample_type.tumor_wild_type]), len(indexes[Sample_type.tumor_mutant]))
+		random.shuffle(indexes[Sample_type.tumor_wild_type])
+		random.shuffle(indexes[Sample_type.tumor_mutant])
+		indexes[Sample_type.tumor_wild_type] = indexes[Sample_type.tumor_wild_type][:equal_size]
+		indexes[Sample_type.tumor_mutant] = indexes[Sample_type.tumor_mutant][:equal_size]
 	sample_numbers = {Sample_type.tumor_mutant: 0, Sample_type.tumor_wild_type: 0, Sample_type.norma: 0}
 	for (s_name, s_type) in sample_classification.iteritems():
 		if sample_numbers.has_key(s_type):
@@ -157,7 +171,12 @@ def process_methylation_data(methylation_fn, samples_classification_fn, interval
 			if i % 4 == 0: # Beta_value
 				meth_val = data[i]
 				if meth_val != 'NA' and cur_meth.has_key(sample_classification[sample_names[i]]):
-					cur_meth[sample_classification[sample_names[i]]].append(float(meth_val))
+					if filter_for_equal_size:
+						for key in indexes.iterkeys():
+							if i in indexes[key]:
+								cur_meth[sample_classification[sample_names[i]]].append(float(meth_val))
+					else:
+						cur_meth[sample_classification[sample_names[i]]].append(float(meth_val))
 			elif i % 4 == 2: # chr
 				if data[i] != cur_chr:
 					print 'wrong chr, expectation', cur_chr, 'reality', data[i]
@@ -195,25 +214,28 @@ def output_methylation_info(output_fn, interval_trees, sample_numbers):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory> -m <mutant gene name>'
+		print 'Usage:', sys.argv[0], '-d <data directory> -c <computations directory> -m <mutant gene name>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Categorize methylation to normal, tumor with mut_gene mutation and tumor wild type for every exon')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
+	parser.add_argument('-c', '--comp_dir', help='computations directory', required=True)
 	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
 	args = parser.parse_args()
 	data_dir = args.data_dir
+	comp_dir = args.comp_dir
 	mutant_gene = args.mut_gene
 	
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
-		in_fn = os.path.join(d, os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
+		d_comp = os.path.join(comp_dir, os.path.basename(d))
+		in_fn = os.path.join(os.path.join(d_comp, mutant_gene), os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
 		(pos, _) = read_psi_average_data(in_fn)
 		interval_trees = build_exon_interval_tree(pos)
 		methylation_fn = os.path.join(d, os.path.basename(d) + '.methylation__humanmethylation450__jhu_usc_edu__Level_3__within_bioassay_data_set_function__data.data.txt')
-		samples_classification_fn = os.path.join(d, os.path.basename(d) + '_' + mutant_gene + '_mutation_impact_for_samples.txt')
-		(interval_trees, sample_numbers) = process_methylation_data(methylation_fn, samples_classification_fn, interval_trees)
-		output_fn = os.path.join(d, os.path.basename(d) + '_exon_methylation_averaged_by_' + mutant_gene + '.txt')
+		samples_classification_fn = os.path.join(os.path.join(d_comp, mutant_gene), os.path.basename(d) + '_' + mutant_gene + '_mutation_impact_for_samples.txt')
+		(interval_trees, sample_numbers) = process_methylation_data(methylation_fn, samples_classification_fn, interval_trees, True)
+		output_fn = os.path.join(os.path.join(d_comp, mutant_gene), os.path.basename(d) + '_exon_methylation_averaged_by_' + mutant_gene + '.txt')
 		output_methylation_info(output_fn, interval_trees, sample_numbers)
 
