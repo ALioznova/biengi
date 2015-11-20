@@ -198,8 +198,22 @@ def get_meth_array(methylation_data, pos, s_type):
 		meth.append(methylation_data[pos[i].chr_name][(pos[i].end1, pos[i].beg2)][s_type])
 	return meth
 
+def get_average_meth(categorized_meth):
+	def only_nan(arr):
+		only_nan = True
+		for elem in arr:
+			if ~numpy.isnan(elem):
+				only_nan = False
+				break
+		return only_nan
+	not_nan_arr = []
+	for (s_type, meth) in categorized_meth.itervalues():
+		if not only_nan(categorized_meth[s_type]):
+			not_nan_arr.append(categorized_meth[s_type])
+	average_meth = np.mean(numpy.array(not_nan_arr), axis = 0)
+	return average_meth
 
-def prepare_data_for_plot(meth_data, psi_data):
+def prepare_data_for_plot(x, y):
 	def only_nan(arr):
 		only_nan = True
 		for elem in arr:
@@ -208,10 +222,10 @@ def prepare_data_for_plot(meth_data, psi_data):
 				break
 		return only_nan
 
-	if only_nan(meth_data) or only_nan(psi_data):
+	if only_nan(x) or only_nan(y):
 		return ([],[])
 	else:
-		return (meth_data, psi_data)
+		return (x, y)
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -235,14 +249,14 @@ if __name__ == '__main__':
 
 	if not os.path.exists(meth_vs_psi_dir):
 		os.mkdir(meth_vs_psi_dir)
-#	if not os.path.exists(av_meth_vs_delta_psi_dir):
-#		os.mkdir(av_meth_vs_delta_psi_dir)
-#	if not os.path.exists(delta_meth_vs_delta_psi_dir):
-#		os.mkdir(delta_meth_vs_delta_psi_dir)
-#	if not os.path.exists(delta_meth_vs_delta_psi_tumor_dir):
-#		os.mkdir(delta_meth_vs_delta_psi_tumor_dir)
-#	if not os.path.exists(meth_wt_vs_mut_dir):
-#		os.mkdir(meth_wt_vs_mut_dir)
+	if not os.path.exists(av_meth_vs_delta_psi_dir):
+		os.mkdir(av_meth_vs_delta_psi_dir)
+	if not os.path.exists(delta_meth_vs_delta_psi_dir):
+		os.mkdir(delta_meth_vs_delta_psi_dir)
+	if not os.path.exists(delta_meth_vs_delta_psi_tumor_dir):
+		os.mkdir(delta_meth_vs_delta_psi_tumor_dir)
+	if not os.path.exists(meth_wt_vs_mut_dir):
+		os.mkdir(meth_wt_vs_mut_dir)
 
 	data_dir_list = [os.path.join(comp_dir, d) for d in os.listdir(comp_dir)]
 	for d in data_dir_list:
@@ -252,58 +266,52 @@ if __name__ == '__main__':
 		methylation_fn = os.path.join(os.path.join(d, mutant_gene), os.path.basename(d) + '_exon_methylation_averaged_by_' + mutant_gene + '.txt')
 		methylation_data = read_methylation_data(methylation_fn)
 		categorized_meth = {Sample_type.tumor_wild_type : get_meth_array(methylation_data, pos, Sample_type.tumor_wild_type), Sample_type.tumor_mutant : get_meth_array(methylation_data, pos, Sample_type.tumor_mutant), Sample_type.norma : get_meth_array(methylation_data, pos, Sample_type.norma)}
+		average_meth = get_average_meth(categorized_meth)
+		nbins_x = 10
+		nbins_y = 15
 
 		# PSI vs meth
 		df = [el for el in [Data_frame_xy('Tumor_wt', 'blue', prepare_data_for_plot(categorized_meth[Sample_type.tumor_wild_type], categorized_psi[Sample_type.tumor_wild_type].data)), Data_frame_xy('Normal', 'chartreuse', prepare_data_for_plot(categorized_meth[Sample_type.norma], categorized_psi[Sample_type.norma].data)), Data_frame_xy('Tumor_mutant', 'red', prepare_data_for_plot(categorized_meth[Sample_type.tumor_mutant], categorized_psi[Sample_type.tumor_mutant].data))] if el.num > 0]
 		if len(df) != 0:
 			meth_path = os.path.join(meth_vs_psi_dir, os.path.basename(d) + '_psi_vs_meth.png')
 			plot_points(meth_path, mutant_gene + '. PSI vs methylation, ' + os.path.basename(d), 'linear', df)
-			nbins_x = 10
-			nbins_y = 15
 			y_lim = (0.0, 1.0)
 			meth_bin_path = os.path.join(meth_vs_psi_dir, os.path.basename(d) + '_psi_vs_meth_bin.png')
 			plot_bins(meth_bin_path, mutant_gene + 'PSI vs methylation for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
 
-
-"""
 		# delta PSI vs average meth
-		df = prepare_data_for_plot_delta_psi_average_meth(methylation_data, pos, tumor_setd2_broken, tumor, normal)
+		df = [el for el in [Data_frame_xy('Tumor_wt - norma', 'blue', prepare_data_for_plot(average_meth, numpy.array(categorized_psi[Sample_type.tumor_wild_type].data) - numpy.array(categorized_psi[Sample_type.normal].data))) Data_frame_xy('Tumor_mutant', 'red', prepare_data_for_plot(average_meth, numpy.arr(categorized_psi[Sample_type.tumor_mutant].data)  - numpy.array(categorized_psi[Sample_type.normal].data)))] if el.num > 0]
 		if len(df) != 0:
-			meth_path = os.path.join(av_meth_vs_delta_psi_dir, os.path.basename(d) + '_meth.png')
-			plot_points(meth_path, 'delta PSI vs average methylation, ' + os.path.basename(d), 'linear', df)
-			nbins_x = 10
-			nbins_y = 15
+			meth_path = os.path.join(av_meth_vs_delta_psi_dir, os.path.basename(d) + '_delta_psi_vs_average_meth.png')
+			plot_points(meth_path, mutant_gene + '. delta PSI vs average methylation, ' + os.path.basename(d), 'linear', df)
 			y_lim = (-1.0, 1.0)
-			meth_bin_path = os.path.join(av_meth_vs_delta_psi_dir, os.path.basename(d) + '_meth_bin.png')
-			plot_bins(meth_bin_path, 'delta PSI vs average methylation for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
+			meth_bin_path = os.path.join(av_meth_vs_delta_psi_dir, os.path.basename(d) + '_delta_psi_vs_average_meth_bin.png')
+			plot_bins(meth_bin_path, mutant_gene + '. delta PSI vs average methylation for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
+
 
 		# delta PSI vs delta meth
-		df = prepare_data_for_plot_delta_psi_delta_meth(methylation_data, pos, tumor_setd2_broken, tumor, normal)
+		df = [el for el in [Data_frame_xy('Tumor_wt - norma', 'blue', prepare_data_for_plot(numpy.array(categorized_meth[Sample_type.tumor_wild_type]) - numpy.array(categorized_meth[Sample_type.norma]), numpy.array(categorized_psi[Sample_type.tumor_wild_type].data)) - numpy.array(categorized_psi[Sample_type.normal].data)), Data_frame_xy('Tumor_mutant - norma', 'red', prepare_data_for_plot(numpy.array(categorized_meth[Sample_type.tumor_mutant]) - numpy.array(categorized_meth[Sample_type.norma]), numpy.array(categorized_psi[Sample_type.tumor_mutant].data) - numpy.array(categorized_psi[Sample_type.normal].data)))] if el.num > 0]
 		if len(df) != 0:
-			meth_path = os.path.join(delta_meth_vs_delta_psi_dir, os.path.basename(d) + '_meth.png')
-			plot_points(meth_path, 'delta PSI vs delta methylation, ' + os.path.basename(d), 'linear', df)
-			nbins_x = 10
-			nbins_y = 15
+			meth_path = os.path.join(delta_meth_vs_delta_psi_dir, os.path.basename(d) + '_delta_psi_vs_delta_meth.png')
+			plot_points(meth_path, mutant_gene + '. delta PSI vs delta methylation, ' + os.path.basename(d), 'linear', df)
 			y_lim = (-1.0, 1.0)
-			meth_bin_path = os.path.join(delta_meth_vs_delta_psi_dir, os.path.basename(d) + '_meth_bin.png')
-			plot_bins(meth_bin_path, 'delta PSI vs delta methylation for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
+			meth_bin_path = os.path.join(delta_meth_vs_delta_psi_dir, os.path.basename(d) + '_delta_psi_vs_delta_meth_bin.png')
+			plot_bins(meth_bin_path, mutant_gene + '. delta PSI vs delta methylation for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
 
 		# delta PSI vs delta meth wt vs setd2
-		df = prepare_data_for_plot_delta_psi_delta_meth_wt_vs_setd2(methylation_data, pos, tumor_setd2_broken, tumor, normal)
+		df = [el for el in [Data_frame_xy('Tumor_wt - tumor_mut', 'magenta', prepare_data_for_plot(numpy.array(categorized_meth[Sample_type.tumor_wild_type]) - numpy.array(categorized_meth[Sample_type.tumor_mutant]), numpy.array(categorized_psi[Sample_type.tumor_wild_type].data)) - numpy.array(categorized_psi[Sample_type.tumor_mutant].data))] if el.num > 0]
 		if len(df) != 0:
-			meth_path = os.path.join(delta_meth_vs_delta_psi_tumor_dir, os.path.basename(d) + '_meth.png')
-			plot_points(meth_path, 'delta PSI vs delta methylation, wt vs setd2, ' + os.path.basename(d), 'linear', df)
-			nbins_x = 10
-			nbins_y = 15
+			meth_path = os.path.join(delta_meth_vs_delta_psi_tumor_dir, os.path.basename(d) + '_delta_psi_vs_delta_meth_tumor.png')
+			plot_points(meth_path,  mutant_gene + '. delta PSI vs delta methylation, wt vs mutant, ' + os.path.basename(d), 'linear', df)
 			y_lim = (-1.0, 1.0)
-			meth_bin_path = os.path.join(delta_meth_vs_delta_psi_tumor_dir, os.path.basename(d) + '_meth_bin.png')
-			plot_bins(meth_bin_path, 'delta PSI vs delta methylation, wt vs setd2 for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
+			meth_bin_path = os.path.join(delta_meth_vs_delta_psi_tumor_dir, os.path.basename(d) + '_delta_psi_vs_delta_meth_tumor_bin.png')
+			plot_bins(meth_bin_path,  mutant_gene + '. delta PSI vs delta methylation, wt vs mutant for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
 
 		# methylation 
-		df = prepare_data_for_plot_meth(methylation_data)
+		df = [el for el in [Data_frame_xy('wt vs mut', 'magenta', prepare_data_for_plot(categorized_meth[Sample_type.tumor_wild_type], categorized_meth[Sample_type.tumor_mutant])] if el.num > 0]
 		if len(df) != 0:
 			meth_path = os.path.join(meth_wt_vs_mut_dir, os.path.basename(d) + '_meth.png')
-			plot_points(meth_path, 'methylation, ' + os.path.basename(d), 'linear', df)
+			plot_points(meth_path, mutant_gene + '. methylation vs methylation (wt vs mut), ' + os.path.basename(d), 'linear', df)
 
-"""
+
 
