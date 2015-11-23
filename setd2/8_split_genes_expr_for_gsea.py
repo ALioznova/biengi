@@ -18,10 +18,10 @@ def is_tool(name):
 	return True
 
 class Exon:
-	def __init__(self, exon_name, psi_norma, psi_tumor, psi_tumor_setd2):
+	def __init__(self, exon_name, psi_norma, psi_tumor_wild_type, psi_tumor_mutant):
 		self.name = exon_name
-		self.psi_tumor_setd2 = psi_tumor_setd2
-		self.psi_tumor = psi_tumor
+		self.psi_tumor_mutant = psi_tumor_mutant
+		self.psi_tumor_wild_type = psi_tumor_wild_type
 		self.psi_norma = psi_norma
 
 class Gene:
@@ -37,11 +37,11 @@ def parse_psi_file(fin):
 	header = f.readline()
 	exons_lst = []
 	for line in f:
-		(name, psi_tumor_setd2, psi_tumor, psi_norma) = line.split('\t')
-		psi_tumor_setd2 = float(psi_tumor_setd2)
+		(name, psi_tumor_mutant, psi_tumor, psi_norma) = line.split('\t')
+		psi_tumor_mutant = float(psi_tumor_mutant)
 		psi_tumor = float(psi_tumor)
 		psi_norma = float(psi_norma)
-		e = Exon(name, psi_norma, psi_tumor, psi_tumor_setd2)
+		e = Exon(name, psi_norma, psi_tumor, psi_tumor_mutant)
 		exons_lst.append(e)
 	f.close()
 	return exons_lst
@@ -113,16 +113,19 @@ def output_info_for_gsea(data_fn, phenotype_fn, genes):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-d <data directory> -gmx <gene set file> -gsea <gsea path>'
+		print 'Usage:', sys.argv[0], '-c <computations directory> -p <pictures directory> -m <mutant gene name> -gmx <gene set file> -gsea <gsea path> -o <output directory>'
 		exit()
 
-	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Analyze')
-	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
+	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Run command-line GSEA for abs(psi_tumor - psi_norma)')
+	parser.add_argument('-c', '--comp_dir', help='computations directory', required=True)
+	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
 	parser.add_argument('-o', '--out_dir', help='output directory', required=True)
 	parser.add_argument('--gmx', help='gene set file', required=True)
 	parser.add_argument('--gsea', help='gsea path', required=True)
 	args = parser.parse_args()
-	data_dir = args.data_dir
+	comp_dir = args.comp_dir
+	pics_dir = args.pics_dir
+	mutant_gene = args.mut_gene
 	gmx = args.gmx
 	gsea = args.gsea
 	out_d = args.out_dir
@@ -135,11 +138,12 @@ if __name__ == '__main__':
 		os.mkdir(os.path.join(out_d, 'gsea'))
 	out_d = os.path.join(out_d, 'gsea')
 
-	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
+	data_dir_list = [os.path.join(comp_dir, d) for d in os.listdir(comp_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)
-		expr_dist_fn = os.path.join(d, os.path.basename(d) + '_expression_and_dist.txt')
-		psi_fn = os.path.join(d, os.path.basename(d) + '_PSI_average.txt')
+		psi_fn = os.path.join(os.path.join(d, mutant_gene), os.path.basename(d) + '_PSI_averaged_by_' + mutant_gene + '.txt')
+		expr_dist_fn = os.path.join(os.path.join(d, mutant_gene), os.path.basename(d) + '_expression_and_dist_split_by_' + mutant_gene + '.txt')
+
 		exons = parse_psi_file(psi_fn)
 		genes = parse_expr_and_dist_file(expr_dist_fn, exons)
 		data_fn = os.path.join(d, os.path.basename(d) + '_gsea_data.txt')
@@ -147,7 +151,7 @@ if __name__ == '__main__':
 		can_run_gsea = output_info_for_gsea(data_fn, phenotype_fn, genes)
 		if not can_run_gsea:
 			continue
-		out_dir = os.path.join(out_d, os.path.basename(d) + '_gsea')
+		out_dir = os.path.join(out_d, os.path.basename(d) + '_gsea_' + mutant_gene)
 		#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Run_GSEA_Page
 		#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Metrics_for_Ranking
 		subprocess.call(['java', '-cp', gsea, '-Xmx2000m', 'xtools.gsea.Gsea', '-res', data_fn, '-cls', phenotype_fn, '-gmx', gmx, '-out', out_dir, '-nperm', '10', '-collapse', 'false', '-metric', 'Diff_of_Classes'])
