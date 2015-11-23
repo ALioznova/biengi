@@ -8,14 +8,10 @@ import numpy
 from enum import Enum, unique
 from sets import Set
 
-def is_tool(name):
-	try:
-		devnull = open(os.devnull)
-		subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
-	except OSError as e:
-		if e.errno == os.errno.ENOENT:
-			return False
-	return True
+class Sample_type(Enum):
+	norma = 0
+	tumor_wild_type = 1
+	tumor_mutant = 2
 
 class Exon:
 	def __init__(self, exon_name, psi_norma, psi_tumor_wild_type, psi_tumor_mutant):
@@ -31,6 +27,15 @@ class Gene:
 
 	def add_exon(self, exon):
 		self.exons.append(exon)
+
+def is_tool(name):
+	try:
+		devnull = open(os.devnull)
+		subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
+	except OSError as e:
+		if e.errno == os.errno.ENOENT:
+			return False
+	return True
 
 def parse_psi_file(fin):
 	f = open(fin)
@@ -66,54 +71,54 @@ def parse_expr_and_dist_file(fin, exons):
 def output_info_for_gsea(data_fn, phenotype_fn, genes):
 	can_run_gsea = False
 	for (gene_name, g) in genes.iteritems():
-		t_setd2_n = [abs(e.psi_tumor_setd2 - e.psi_norma) for e in g.exons]
-		t_setd2_n = [e for e in t_setd2_n if ~numpy.isnan(e)]
-		t_n = [abs(e.psi_tumor - e.psi_norma) for e in g.exons]
-		t_n = [e for e in t_n if ~numpy.isnan(e)]
-		if len(t_setd2_n) > 0 and len(t_n) > 0:
+		t_mut_n = [abs(e.psi_tumor_mutant - e.psi_norma) for e in g.exons]
+		t_mut_n = [e for e in t_mut_n if ~numpy.isnan(e)]
+		t_wt_n = [abs(e.psi_tumor_wild_type - e.psi_norma) for e in g.exons]
+		t_wt_n = [e for e in t_wt_n if ~numpy.isnan(e)]
+		if len(t_mut_n) > 0 and len(t_wt_n) > 0:
 			can_run_gsea = True
 			break
 	if not can_run_gsea:
 		return False
 	#http://www.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats
 	fout = open(data_fn, 'w')
-	fout.write('Name\tDescription\ttumor_norm_delta_psi\ttumor_setd2_norm_delta_psi\n')
+	fout.write('Name\tDescription\ttumor_wt_norm_delta_psi\ttumor_mut_norm_delta_psi\n')
 	for (gene_name, g) in genes.iteritems():
 		new_line = ''
 		new_line += (gene_name.split('|')[1] + '\tna') # entrez number only
-		t_setd2_n = [abs(e.psi_tumor_setd2 - e.psi_norma) for e in g.exons]
-		t_setd2_n = [e for e in t_setd2_n if ~numpy.isnan(e)]
-		t_n = [abs(e.psi_tumor - e.psi_norma) for e in g.exons]
-		t_n = [e for e in t_n if ~numpy.isnan(e)]
-		if len(t_n) > 0:
-			tumor_norm_max = max(t_n)
+		t_mut_n = [abs(e.psi_tumor_mutant - e.psi_norma) for e in g.exons]
+		t_mut_n = [e for e in t_mut_n if ~numpy.isnan(e)]
+		t_wt_n = [abs(e.psi_tumor_wild_type - e.psi_norma) for e in g.exons]
+		t_wt_n = [e for e in t_wt_n if ~numpy.isnan(e)]
+		if len(t_wt_n) > 0:
+			tumor_wt_norm_max = max(t_wt_n)
 		else:
-			tumor_norm_max = None
-		if len(t_setd2_n) > 0:
-			tumor_setd2_norm_max = max(t_setd2_n)
+			tumor_wt_norm_max = None
+		if len(t_mut_n) > 0:
+			tumor_mut_norm_max = max(t_mut_n)
 		else:
-			tumor_setd2_norm_max = None
+			tumor_mut_norm_max = None
 		new_line += ('\t')
-		if tumor_norm_max:
-			new_line += (str(tumor_norm_max))
+		if tumor_wt_norm_max:
+			new_line += (str(tumor_wt_norm_max))
 		new_line += ('\t')
-		if tumor_setd2_norm_max:
-			new_line += (str(tumor_setd2_norm_max))
-		if (not tumor_norm_max) or (not tumor_setd2_norm_max):
+		if tumor_mut_norm_max:
+			new_line += (str(tumor_mut_norm_max))
+		if (not tumor_wt_norm_max) or (not tumor_mut_norm_max):
 			new_line = None
 		if new_line:
 			fout.write(new_line + '\n')
 	fout.close()
 	fout = open(phenotype_fn, 'w')
 	fout.write('2 2 1\n')
-	fout.write('# tumor_norm_delta_psi tumor_setd2_norm_delta_psi\n')
-	fout.write('tumor_norm_delta_psi tumor_setd2_norm_delta_psi\n')
+	fout.write('# tumor_wt_norm_delta_psi tumor_mut_norm_delta_psi\n')
+	fout.write('tumor_wt_norm_delta_psi tumor_mut_norm_delta_psi\n')
 	fout.close()
 	return True
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-c <computations directory> -p <pictures directory> -m <mutant gene name> -gmx <gene set file> -gsea <gsea path> -o <output directory>'
+		print 'Usage:', sys.argv[0], '-c <computations directory> -m <mutant gene name> -gmx <gene set file> -gsea <gsea path> -o <output directory>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Run command-line GSEA for abs(psi_tumor - psi_norma)')
@@ -124,7 +129,6 @@ if __name__ == '__main__':
 	parser.add_argument('--gsea', help='gsea path', required=True)
 	args = parser.parse_args()
 	comp_dir = args.comp_dir
-	pics_dir = args.pics_dir
 	mutant_gene = args.mut_gene
 	gmx = args.gmx
 	gsea = args.gsea
