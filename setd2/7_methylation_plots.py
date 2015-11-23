@@ -210,6 +210,8 @@ def get_average_meth(categorized_meth):
 	for (s_type, meth) in categorized_meth.iteritems():
 		if not only_nan(categorized_meth[s_type]):
 			not_nan_arr.append(categorized_meth[s_type])
+	if len(numpy.array(not_nan_arr)) == 0:
+		return []
 	average_meth = numpy.mean(numpy.array(not_nan_arr), axis = 0)
 	return average_meth
 
@@ -267,6 +269,8 @@ if __name__ == '__main__':
 		methylation_data = read_methylation_data(methylation_fn)
 		categorized_meth = {Sample_type.tumor_wild_type : get_meth_array(methylation_data, pos, Sample_type.tumor_wild_type), Sample_type.tumor_mutant : get_meth_array(methylation_data, pos, Sample_type.tumor_mutant), Sample_type.norma : get_meth_array(methylation_data, pos, Sample_type.norma)}
 		average_meth = get_average_meth(categorized_meth)
+		if len(average_meth) == 0:
+			continue
 		nbins_x = 10
 		nbins_y = 15
 
@@ -280,7 +284,7 @@ if __name__ == '__main__':
 			plot_bins(meth_bin_path, mutant_gene + 'PSI vs methylation for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
 
 		# delta PSI vs average meth
-		df = [el for el in [Data_frame_xy('Tumor_wt - norma', 'blue', prepare_data_for_plot(average_meth, numpy.array(categorized_psi[Sample_type.tumor_wild_type].data) - numpy.array(categorized_psi[Sample_type.norma].data))), Data_frame_xy('Tumor_mutant', 'red', prepare_data_for_plot(average_meth, numpy.array(categorized_psi[Sample_type.tumor_mutant].data)  - numpy.array(categorized_psi[Sample_type.norma].data)))] if el.num > 0]
+		df = [el for el in [Data_frame_xy('Tumor_wt - norma', 'blue', prepare_data_for_plot(average_meth, numpy.array(categorized_psi[Sample_type.tumor_wild_type].data) - numpy.array(categorized_psi[Sample_type.norma].data))), Data_frame_xy('Tumor_mutant - norma', 'red', prepare_data_for_plot(average_meth, numpy.array(categorized_psi[Sample_type.tumor_mutant].data) - numpy.array(categorized_psi[Sample_type.norma].data)))] if el.num > 0]
 		if len(df) != 0:
 			meth_path = os.path.join(av_meth_vs_delta_psi_dir, os.path.basename(d) + '_delta_psi_vs_average_meth.png')
 			plot_points(meth_path, mutant_gene + '. delta PSI vs average methylation, ' + os.path.basename(d), 'linear', df)
