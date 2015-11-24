@@ -158,7 +158,7 @@ if __name__ == '__main__':
 		out_dir = os.path.join(out_d, os.path.basename(d) + '_gsea_' + mutant_gene)
 		#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Run_GSEA_Page
 		#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Metrics_for_Ranking
-		subprocess.call(['java', '-cp', gsea, '-Xmx2000m', 'xtools.gsea.Gsea', '-res', data_fn, '-cls', phenotype_fn, '-gmx', gmx, '-out', out_dir, '-nperm', '10', '-collapse', 'false', '-metric', 'Diff_of_Classes'])
+		subprocess.call(['java', '-cp', gsea, '-Xmx2000m', 'xtools.gsea.Gsea', '-res', data_fn, '-cls', phenotype_fn, '-gmx', gmx, '-out', out_dir, '-nperm', '10', '-collapse', 'false', '-metric', 'Diff_of_Classes', '-permute', 'gene_set'])
 		#http://www.broadinstitute.org/gsea/doc/GSEAUserGuideTEXT.htm#_Interpreting_GSEA_Results
 
 
