@@ -247,7 +247,7 @@ if __name__ == '__main__':
 	av_meth_vs_delta_psi_dir = os.path.join(pics_dir, 'methylation_averaged_vs_delta_PSI_for_' + mutant_gene)
 	delta_meth_vs_delta_psi_dir = os.path.join(pics_dir, 'methylation_delta_vs_delta_PSI_tumor_vs_norma_for_' + mutant_gene)
 	delta_meth_vs_delta_psi_tumor_dir = os.path.join(pics_dir, 'methylation_delta_vs_delta_PSI_wt_vs_mut_for_' + mutant_gene)
-	meth_wt_vs_mut_dir = os.path.join(pics_dir, 'methylation_wt_vs_setd2')
+	meth_wt_vs_mut_dir = os.path.join(pics_dir, 'methylation_wt_vs_setd2' + mutant_gene)
 
 	if not os.path.exists(meth_vs_psi_dir):
 		os.mkdir(meth_vs_psi_dir)
