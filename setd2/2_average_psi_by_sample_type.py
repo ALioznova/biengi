@@ -272,6 +272,8 @@ if __name__ == '__main__':
 		print >> sys.stderr, 'Not a directory ' + data_dir
 		sys.exit(1)
 
+	random.seed(1)
+
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
 		print 'processing', os.path.basename(d)

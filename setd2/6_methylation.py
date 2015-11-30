@@ -159,12 +159,13 @@ def process_methylation_data(methylation_fn, samples_classification_fn, interval
 		indexes[Sample_type.tumor_wild_type] = indexes[Sample_type.tumor_wild_type][:equal_size]
 		indexes[Sample_type.tumor_mutant] = indexes[Sample_type.tumor_mutant][:equal_size]
 	sample_numbers = {Sample_type.tumor_mutant: 0, Sample_type.tumor_wild_type: 0, Sample_type.norma: 0}
-	for (s_name, s_type) in sample_classification.iteritems():
-		if sample_numbers.has_key(s_type):
-			sample_numbers[Sample_type.tumor_wild_type] = equal_size
-			sample_numbers[Sample_type.tumor_mutant] = equal_size
 	if filter_for_equal_size:
-		sample_numbers[s_type] += 1
+		sample_numbers[Sample_type.tumor_wild_type] = equal_size
+		sample_numbers[Sample_type.tumor_mutant] = equal_size
+	else:
+		for (s_name, s_type) in sample_classification.iteritems():
+			if sample_numbers.has_key(s_type):
+				sample_numbers[s_type] += 1
 	for line in methylation_f:
 		cur_meth = {Sample_type.norma: [], Sample_type.tumor_wild_type: [], Sample_type.tumor_mutant : []}
 		data = line.strip().split('\t')[1:]
@@ -228,6 +229,8 @@ if __name__ == '__main__':
 	data_dir = args.data_dir
 	comp_dir = args.comp_dir
 	mutant_gene = args.mut_gene
+
+	random.seed(1)
 	
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:
