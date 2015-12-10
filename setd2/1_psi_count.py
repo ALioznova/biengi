@@ -55,7 +55,7 @@ def find_spliced_intervals(data):
 	for (chr_name, chr_data) in data.iteritems():
 		chr_tree = interval_trees[chr_name] 
 		chr_intervals = []
-		for i in xrange(len(chr_data)):
+		for i in xrange(len(chr_data)): # treat current interval as a long one
 			left_set_all = chr_tree[chr_data[i].begin + 0.1]
 			left_intervals = []
 			for elem in left_set_all:

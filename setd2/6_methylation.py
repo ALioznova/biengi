@@ -230,7 +230,7 @@ if __name__ == '__main__':
 	comp_dir = args.comp_dir
 	mutant_gene = args.mut_gene
 
-	random.seed(1)
+	random.seed(4)
 	
 	data_dir_list = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
 	for d in data_dir_list:

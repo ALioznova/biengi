@@ -160,7 +160,6 @@ def parse_genes_file(genes_file):
 				# filling interval_trees for annotated exons:
 				interval_trees[(exons.chr_name, exons.strand)][exons.begs[i] : exons.ends[i]] = '|'.join(name.split('|')[:2])
 	gf.close()
-
 	return (genes_data, exon_dict, interval_trees)
 
 def exon_to_gene_names(exon_dict, interval_trees, pos):
@@ -206,13 +205,13 @@ def get_dist_exon_gene_beg(exon_to_genes, genes_data, pos_rec):
 							continue
 						if get_overlap((loc.beg, loc.end), (ge_beg, ge_end)) != 0:
 							if loc.strand == True and exon_strand == True:
-								if exon_beg - loc.beg < 0 or exon_beg - loc.beg > loc.end - loc.beg:
+								if exon_beg < loc.beg or exon_beg > loc.end:
 									continue
 								dist_bp.append(exon_beg - loc.beg)
 								dist_perc.append(float(exon_beg - loc.beg)/(loc.end - loc.beg))
 								gene_name.append(gene.name)
 							elif loc.strand == False and exon_strand == False:
-								if loc.end - exon_end < 0 or loc.end - exon_end > loc.end - loc.beg:
+								if loc.end < exon_end or exon_end < loc.beg:
 									continue
 								dist_bp.append(loc.end - exon_end)
 								dist_perc.append(float(loc.end - exon_end)/(loc.end - loc.beg))

@@ -118,7 +118,7 @@ def output_info_for_gsea(data_fn, phenotype_fn, genes):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-c <computations directory> -m <mutant gene name> -gmx <gene set file> -gsea <gsea path> -o <output directory>'
+		print 'Usage:', sys.argv[0], '-c <computations directory> -m <mutant gene name> --gmx <gene set file> --gsea <gsea path> -o <output directory>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Run command-line GSEA for abs(psi_tumor - psi_norma)')
