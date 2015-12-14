@@ -249,4 +249,4 @@ if __name__ == '__main__':
 			expression = extract_pos_expression(exon_expression, pos)
 			out_fn = os.path.join(os.path.join(d_comp, mutant_gene), os.path.basename(d) + '_exon_expresion_split_by_' + mutant_gene + '.txt')
 			output_expression_info(out_fn, expression, pos)
-		break
+
