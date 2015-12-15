@@ -209,6 +209,8 @@ def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, y_lim, xy_data_fra
 		y_split = []
 		x_split = []
 		for i in xrange(1, nbins_x + 1):
+			if len([df.y[j] for j in xrange(df.num) if df.ind[j] == i]) == 0:
+				return
 			y_split.append([df.y[j] for j in xrange(df.num) if df.ind[j] == i])
 			x_split.append([df.x[j] for j in xrange(df.num) if df.ind[j] == i])
 		df.y_split = y_split
