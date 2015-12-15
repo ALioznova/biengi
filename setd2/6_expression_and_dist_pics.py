@@ -66,11 +66,22 @@ def read_expr_dist_data(in_fn):
 	for line in in_f:
 		dist_bp.append([int(el) for el in line.split('\t')[1].split(',') if (el != '' and el != 'nan')])
 		dist_perc.append([float(el) for el in line.split('\t')[2].split(',') if (el != '' and el != 'nan')])
-		categorized_expr[Sample_type.tumor_mutant].data.append([float(el) for el in line.split('\t')[3].split(',') if el != '' and el != 'nan'])
-		categorized_expr[Sample_type.tumor_wild_type].data.append([float(el) for el in line.split('\t')[4].split(',') if el != '' and el != 'nan'])
-		categorized_expr[Sample_type.norma].data.append([float(el) for el in line.split('\t')[5].strip().split(',') if el != '' and el != 'nan'])
+		categorized_expr[Sample_type.tumor_mutant].data.append([float(el) for el in line.split('\t')[3].split(',') if el.strip() != '' and el.strip() != 'nan'])
+		categorized_expr[Sample_type.tumor_wild_type].data.append([float(el) for el in line.split('\t')[4].split(',') if el.strip() != '' and el.strip() != 'nan'])
+		categorized_expr[Sample_type.norma].data.append([float(el) for el in line.split('\t')[5].strip().split(',') if el.strip() != '' and el.strip() != 'nan'])
 	in_f.close()
 	return (dist_bp, dist_perc, categorized_expr)
+
+def read_exon_expr_data(in_fn):
+	in_f = open(in_fn)
+	header_line = in_f.readline()
+	categorized_expr = {Sample_type.norma : Categorized_data_frame([], None), Sample_type.tumor_wild_type : Categorized_data_frame([], None), Sample_type.tumor_mutant : Categorized_data_frame([], None)}
+	for line in in_f:
+		categorized_expr[Sample_type.tumor_wild_type].data.append([float(el) for el in line.split('\t')[1].split(',') if el.strip() != '' and el.strip() != 'nan'])
+		categorized_expr[Sample_type.tumor_mutant].data.append([float(el) for el in line.split('\t')[2].split(',') if el.strip() != '' and el.strip() != 'nan'])
+		categorized_expr[Sample_type.norma].data.append([float(el) for el in line.split('\t')[3].strip().split(',') if el.strip() != '' and el.strip() != 'nan'])
+	in_f.close()
+	return categorized_expr
 
 def prepare_data_for_plot(x_arr_of_arr, y_arr):
 	only_nan = True
@@ -151,6 +162,8 @@ def plot_points(fig_path, plot_label, xscale, xy_data_frames):
 		will_del_index.append(will_del)
 	for df in xy_data_frames:
 		df.delete_elems_by_index(will_del_index)
+		if len(df.x) == 0:
+			return
 
 	fig = plt.figure()
 	plt.xscale(xscale)
@@ -183,6 +196,8 @@ def plot_bins(fig_path, plot_label, xscale, nbins_x, nbins_y, y_lim, xy_data_fra
 		will_del_index.append(will_del)
 	for df in xy_data_frames:
 		df.delete_elems_by_index(will_del_index)
+		if len(df.x) == 0:
+			return
 
 	x_data = []
 	for df in xy_data_frames:
@@ -282,8 +297,10 @@ if __name__ == '__main__':
 	pics_dir = args.pics_dir
 	mutant_gene = args.mut_gene
 
-	expr_dir = os.path.join(pics_dir, 'expression_vs_PSI_for_' + mutant_gene)
-	expr_average_dir = os.path.join(pics_dir, 'expression_averaged_vs_delta_PSI_for_' + mutant_gene)
+	expr_dir = os.path.join(pics_dir, 'gene_expression_vs_PSI_for_' + mutant_gene)
+	expr_average_dir = os.path.join(pics_dir, 'gene_expression_averaged_vs_delta_PSI_for_' + mutant_gene)
+	exon_expr_dir = os.path.join(pics_dir, 'exon_expression_vs_PSI_for_' + mutant_gene)
+	exon_expr_average_dir = os.path.join(pics_dir, 'exon_expression_averaged_vs_delta_PSI_for_' + mutant_gene)
 	dist_bp_dir = os.path.join(pics_dir, 'distance_bp_vs_PSI_for_' + mutant_gene)
 	dist_bp_delta_dir = os.path.join(pics_dir, 'distance_bp_vs_delta_PSI_for_' + mutant_gene)
 	dist_perc_dir = os.path.join(pics_dir, 'distance_perc_vs_PSI_for_' + mutant_gene)
@@ -293,6 +310,10 @@ if __name__ == '__main__':
 		os.mkdir(expr_dir)
 	if not os.path.exists(expr_average_dir):
 		os.mkdir(expr_average_dir)
+	if not os.path.exists(exon_expr_dir):
+		os.mkdir(exon_expr_dir)
+	if not os.path.exists(exon_expr_average_dir):
+		os.mkdir(exon_expr_average_dir)
 	if not os.path.exists(dist_bp_dir):
 		os.mkdir(dist_bp_dir)
 	if not os.path.exists(dist_bp_delta_dir):
@@ -310,11 +331,17 @@ if __name__ == '__main__':
 		expr_dist_fn = os.path.join(os.path.join(d, mutant_gene), os.path.basename(d) + '_expression_and_dist_split_by_' + mutant_gene + '.txt')
 		(dist_bp, dist_perc, categorized_expr) = read_expr_dist_data(expr_dist_fn)
 
+		exon_expr_fn = os.path.join(os.path.join(d, mutant_gene), os.path.basename(d) + '_exon_expresion_split_by_' + mutant_gene + '.txt')
+		if not os.path.isfile(exon_expr_fn):
+			exon_expr = None
+		else:
+			exon_expr = read_exon_expr_data(exon_expr_fn)
+
 		nbins_x = 10
 		nbins_y = 15
 		y_lim = (0.0, 1.0)
 
-		# expression
+		# gene expression
 		df = [el for el in [Data_frame_xy('Tumor_wt', 'blue', prepare_data_for_plot(categorized_expr[Sample_type.tumor_wild_type].data, categorized_psi[Sample_type.tumor_wild_type].data)), Data_frame_xy('Normal', 'chartreuse', prepare_data_for_plot(categorized_expr[Sample_type.norma].data, categorized_psi[Sample_type.norma].data)), Data_frame_xy('Tumor_mutant', 'red', prepare_data_for_plot(categorized_expr[Sample_type.tumor_mutant].data, categorized_psi[Sample_type.tumor_mutant].data))] if el.num > 0]
 		if len(df) > 0:
 			expr_path = os.path.join(expr_dir, os.path.basename(d) + '_psi_vs_expr.png')
@@ -322,7 +349,7 @@ if __name__ == '__main__':
 			expr_bin_path = os.path.join(expr_dir, os.path.basename(d) + '_psi_vs_expr_bin.png')
 			plot_bins(expr_bin_path, mutant_gene + '. PSI vs expression for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
 
-		# average expr, delpa PSI
+		# average gene expr, delpa PSI
 		df = [el for el in [Data_frame_xy('tumor_wt-norm', 'blue', prepare_data_for_plot_delta_expr(categorized_expr[Sample_type.tumor_wild_type].data, categorized_expr[Sample_type.norma].data, categorized_expr[Sample_type.tumor_mutant].data, categorized_psi[Sample_type.tumor_wild_type].data, categorized_psi[Sample_type.norma].data, categorized_psi[Sample_type.tumor_mutant].data)), Data_frame_xy('tumor_mut-norm', 'red', prepare_data_for_plot_delta_expr(categorized_expr[Sample_type.tumor_mutant].data, categorized_expr[Sample_type.norma].data, categorized_expr[Sample_type.tumor_wild_type].data, categorized_psi[Sample_type.tumor_mutant].data, categorized_psi[Sample_type.norma].data, categorized_psi[Sample_type.tumor_wild_type].data))] if el.num > 0]
 		if len(df) > 0:
 			expr_delta_path = os.path.join(expr_average_dir, os.path.basename(d) + '_delta_psi_vs_av_expression.png')
@@ -331,6 +358,25 @@ if __name__ == '__main__':
 			plot_bins(expr_delta_bin_path, mutant_gene + '. delta PSI vs average expression for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, (-1.0, 1.0), df)
 			expr_std_delta_path = os.path.join(expr_average_dir, os.path.basename(d) + '_std_for_delta_psi_vs_average_expression.png')
 			plot_std_and_ci_for_expr(df, expr_std_delta_path, mutant_gene + '. std for delta PSI vs average expression for ' + os.path.basename(d), 0.05)
+
+		if exon_expr:
+			# exon expression
+			df = [el for el in [Data_frame_xy('Tumor_wt', 'blue', prepare_data_for_plot(exon_expr[Sample_type.tumor_wild_type].data, categorized_psi[Sample_type.tumor_wild_type].data)), Data_frame_xy('Normal', 'chartreuse', prepare_data_for_plot(exon_expr[Sample_type.norma].data, categorized_psi[Sample_type.norma].data)), Data_frame_xy('Tumor_mutant', 'red', prepare_data_for_plot(exon_expr[Sample_type.tumor_mutant].data, categorized_psi[Sample_type.tumor_mutant].data))] if el.num > 0]
+			if len(df) > 0:
+				exon_expr_path = os.path.join(exon_expr_dir, os.path.basename(d) + '_psi_vs_exon_expr.png')
+				plot_points(exon_expr_path, mutant_gene + '. PSI vs exon expression, ' + os.path.basename(d), 'log', df)
+				exon_expr_bin_path = os.path.join(exon_expr_dir, os.path.basename(d) + '_psi_vs_exon_expr_bin.png')
+				plot_bins(exon_expr_bin_path, mutant_gene + '. PSI vs exon expression for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, y_lim, df)
+
+			# average gene expr, delpa PSI
+			df = [el for el in [Data_frame_xy('tumor_wt-norm', 'blue', prepare_data_for_plot_delta_expr(exon_expr[Sample_type.tumor_wild_type].data, exon_expr[Sample_type.norma].data, exon_expr[Sample_type.tumor_mutant].data, categorized_psi[Sample_type.tumor_wild_type].data, categorized_psi[Sample_type.norma].data, categorized_psi[Sample_type.tumor_mutant].data)), Data_frame_xy('tumor_mut-norm', 'red', prepare_data_for_plot_delta_expr(exon_expr[Sample_type.tumor_mutant].data, exon_expr[Sample_type.norma].data, exon_expr[Sample_type.tumor_wild_type].data, categorized_psi[Sample_type.tumor_mutant].data, categorized_psi[Sample_type.norma].data, categorized_psi[Sample_type.tumor_wild_type].data))] if el.num > 0]
+			if len(df) > 0:
+				exon_expr_delta_path = os.path.join(exon_expr_average_dir, os.path.basename(d) + '_delta_psi_vs_av_exon_expression.png')
+				plot_points(exon_expr_delta_path, mutant_gene + '. delta PSI vs average exon expression, ' + os.path.basename(d), 'linear', df)
+				exon_expr_delta_bin_path = os.path.join(exon_expr_average_dir, os.path.basename(d) + '_delta_psi_vs_av_exon_expression_bin.png')
+				plot_bins(exon_expr_delta_bin_path, mutant_gene + '. delta PSI vs average exon expression for ' + os.path.basename(d), 'linear', nbins_x, nbins_y, (-1.0, 1.0), df)
+				exon_expr_std_delta_path = os.path.join(exon_expr_average_dir, os.path.basename(d) + '_std_for_delta_psi_vs_average_exon_expression.png')
+				plot_std_and_ci_for_expr(df, exon_expr_std_delta_path, mutant_gene + '. std for delta PSI vs average exon expression for ' + os.path.basename(d), 0.05)
 
 		# distance in bp
 		df = [el for el in [Data_frame_xy('Tumor_wt', 'blue', prepare_data_for_plot(dist_bp, categorized_psi[Sample_type.tumor_wild_type].data)), Data_frame_xy('Normal', 'chartreuse', prepare_data_for_plot(dist_bp, categorized_psi[Sample_type.norma].data)), Data_frame_xy('Tumor_mut', 'red', prepare_data_for_plot(dist_bp, categorized_psi[Sample_type.tumor_mutant].data))] if el.num > 0]
