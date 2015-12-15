@@ -94,7 +94,7 @@ def build_exon_interval_tree(pos):
 	for p in pos:
 		if not interval_trees.has_key(p.chr_name):
 			interval_trees[p.chr_name] = IntervalTree()
-		interval_trees[p.chr_name][p.end1 : p.beg2] = {Sample_type.norma: [], Sample_type.tumor_wild_type: [], Sample_type.tumor_mutant : []} # doesn't include right border
+		interval_trees[p.chr_name][p.end1 : p.beg2 + 0.1] = {Sample_type.norma: [], Sample_type.tumor_wild_type: [], Sample_type.tumor_mutant : []} # doesn't include right border
 	return interval_trees
 
 def get_sample_classification(sample_names, samples_classification_fn):
