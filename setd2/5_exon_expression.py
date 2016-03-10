@@ -222,7 +222,7 @@ if __name__ == '__main__':
 		print 'Usage:', sys.argv[0], '-d <data directory> -c <computations directory> -m <mutant gene name>'
 		exit()
 
-	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Categorize methylation to normal, tumor with mut_gene mutation and tumor wild type for every exon')
+	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Categorize expression to normal, tumor with mut_gene mutation and tumor wild type for every exon')
 	parser.add_argument('-d', '--data_dir', help='data directory', required=True)
 	parser.add_argument('-c', '--comp_dir', help='computations directory', required=True)
 	parser.add_argument('-m', '--mut_gene', help='mutatn gene name', required=True)
