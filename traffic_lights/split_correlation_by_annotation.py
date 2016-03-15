@@ -161,8 +161,6 @@ if __name__ == '__main__':
 	tl_records_scope = compute_content(ref_dir, tl_dir)
 	(tl_background, tl_pos_corr, tl_neg_corr) = split_for_background(tl_records_scope)
 	annotations = get_annotations(tl_pos_corr, tl_neg_corr)
-	print len(annotations)
-	sys.exit(0)
 	for annotation in annotations:
 		print annotation
 		tl_pos_corr_an = get_annotated_records(annotation, tl_pos_corr)
