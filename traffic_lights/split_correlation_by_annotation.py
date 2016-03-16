@@ -21,9 +21,9 @@ class tl_record:
 		self.num = int(tl_line.split()[4][1:])
 		self.corr = float(tl_line.split()[5])
 		self.p_corr = float(tl_line.split()[6])
-		self.cause = float(tl_line.split()[7])
+		self.p_corr_fdr = float(tl_line.split()[7])
 		assert tl_line.split()[8].endswith(')')
-		self.p_cause = float(tl_line.split()[8][:-1])
+		self.cause = float(tl_line.split()[8][:-1])
 		self.extra = tl_line.split()[9:]
 		self.tl_id = tl_id
 
@@ -65,12 +65,12 @@ def get_annotations(tl_pos_corr, tl_neg_corr):
 	return annotations
 
 def split_for_background(tl_records_scope):
-	p_val_threshold = 0.05
+	p_val_threshold = 0.2
 	tl_pos_corr = {}
 	tl_neg_corr = {}
 	tl_background = {}
 	for (key, tl) in tl_records_scope.iteritems():
-		if tl.p_corr < p_val_threshold:
+		if tl.p_corr_fdr < p_val_threshold:
 			if tl.corr > 0:
 				tl_pos_corr[key] = tl
 			elif tl.corr < 0:
@@ -160,13 +160,17 @@ if __name__ == '__main__':
 
 	tl_records_scope = compute_content(ref_dir, tl_dir)
 	(tl_background, tl_pos_corr, tl_neg_corr) = split_for_background(tl_records_scope)
+	print 'bg', len(tl_background), '+', len(tl_pos_corr), '-', len(tl_neg_corr)
 	annotations = get_annotations(tl_pos_corr, tl_neg_corr)
 	for annotation in annotations:
 		print annotation
 		tl_pos_corr_an = get_annotated_records(annotation, tl_pos_corr)
 		tl_neg_corr_an = get_annotated_records(annotation, tl_neg_corr)
 		tl_background_an = get_annotated_records(annotation, tl_background)
+		print 'TL', len(tl_pos_corr_an) + len (tl_neg_corr_an), 'of', len(tl_pos_corr) + len(tl_neg_corr)
+		print 'bg', len(tl_background_an), 'of', len(tl_background)
 		(pos_corr, background_pos_corr) = build_tl_pairs(tl_pos_corr_an, tl_pos_corr_an)
+		print 'pairs selected'
 		out_pos = open(os.path.join(out_dir, annotation + '_pos.txt'), 'w')
 		for i in xrange(len(pos_corr)):
 			out_pos.write(str(pos_corr[i]) + '\t' + str(background_pos_corr[i]) + '\n')
@@ -176,4 +180,4 @@ if __name__ == '__main__':
 		for i in xrange(len(neg_corr)):
 			out_neg.write(str(neg_corr[i]) + '\t' + str(background_neg_corr[i]) + '\n')
 		out_neg.close()
-
+		print
