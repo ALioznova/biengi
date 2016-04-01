@@ -8,17 +8,18 @@ from intervaltree import Interval, IntervalTree
 def parse_snp(snp_file):
 	snp = {}
 	for line in open(snp_file):
-		chr_name = line.split()[1]
+		chr_name = line.split()[0]
 		if not snp.has_key(chr_name):
 			snp[chr_name] = IntervalTree()
-		# 0-based => +1
-		beg = int(line.split()[2]) + 1
-		end = int(line.split()[3]) + 1
+		# 0-based
+		beg = int(line.split()[1])
+		end = int(line.split()[2])
 		if beg == end:
 			#insertion
 			end += 0.1
 		# not including upper limit
-		snp[chr_name].add(Interval(beg, end))
+#		snp[chr_name].add(Interval(beg, end))
+		snp[chr_name][beg:end] = line.split()[3]
 	return snp
 
 def process_tl(snp, tl_dir, out_dir):
@@ -29,16 +30,38 @@ def process_tl(snp, tl_dir, out_dir):
 			cur_chr = 'chrX'
 		elif cur_chr == 'chr24':
 			cur_chr = 'chrY'
-		out_file = os.path.join(out_dir, tl_file.split('_')[0] + '_tl_snp_annotation.txt')
+		out_file = os.path.join(out_dir, tl_file.split('_')[0] + '_tl_5hmC_annotation.txt')
 		fout = open(out_file, 'w')		
 		for line in open(os.path.join(tl_dir, tl_file)):
-			# 1-based!
-			# CG coordinate => check pos+1
+			# 0-based
+			# C coordinate
 			pos = int(line.split()[1])
-			if len(snp[cur_chr][pos]) > 0 or len(snp[cur_chr][pos+1]) > 0:
-				fout.write('+\n')
+			strand = line.split()[2]
+			if strand == '+':
+				if len(snp[cur_chr][pos]) > 0 or len(snp[cur_chr][pos+1]) > 0:
+#					fout.write(str(pos) + '\t+\n')
+					fout.write(str(pos) + '\t')
+					for elem in snp[cur_chr][pos]:
+						fout.write(elem.data + '\t')
+					for elem in snp[cur_chr][pos+1]:
+						fout.write(elem.data + '\t')
+					fout.write('\n')
+				else:
+					fout.write(str(pos) + '\t-\n')
+			elif strand == '-':
+				if len(snp[cur_chr][pos]) > 0 or len(snp[cur_chr][pos-1]) > 0:
+#					fout.write(str(pos) + '\t+\n')
+					fout.write(str(pos) + '\t')
+					for elem in snp[cur_chr][pos]:
+						fout.write(elem.data + '\t')
+					for elem in snp[cur_chr][pos-1]:
+						fout.write(elem.data + '\t')
+					fout.write('\n')
+				else:
+					fout.write(str(pos) + '\t-\n')
 			else:
-				fout.write('-\n')
+				print 'unknown strad', strand
+				fout.write(str(pos) + '\n')
 		fout.close()
 
 if __name__ == '__main__':

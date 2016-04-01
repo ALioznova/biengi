@@ -21,16 +21,17 @@ def parse_enhancer(enhancer_file):
 		chr_name = coords_info.split(':')[0]
 		if not enhancer.has_key(chr_name):
 			enhancer[chr_name] = IntervalTree()
-		# 0-based => +1
-		beg = int(coords_info.split(':')[1].split('-')[0]) + 1
-		end = int(coords_info.split(':')[1].split('-')[1]) + 1
+		# 0-based
+		beg = int(coords_info.split(':')[1].split('-')[0])
+		end = int(coords_info.split(':')[1].split('-')[1])
 		# not including upper limit
-		if usage < 10:
-			enhancer[chr_name][beg:end] = Enhancer_type.low
-		elif usage > 1000:
-			enhancer[chr_name][beg:end] = Enhancer_type.high
-		else:
-			enhancer[chr_name][beg:end] = Enhancer_type.medium
+#		if usage < 10:
+#			enhancer[chr_name][beg:end] = Enhancer_type.low
+#		elif usage > 1000:
+#			enhancer[chr_name][beg:end] = Enhancer_type.high
+#		else:
+#			enhancer[chr_name][beg:end] = Enhancer_type.medium
+		enhancer[chr_name][beg:end] = str(usage)
 	fin.close()
 	return enhancer
 
@@ -45,15 +46,33 @@ def process_tl(enhancer, tl_dir, out_dir):
 		out_file = os.path.join(out_dir, tl_file.split('_')[0] + '_tl_enhancer_annotation.txt')
 		fout = open(out_file, 'w')		
 		for line in open(os.path.join(tl_dir, tl_file)):
-			# 1-based!
-			# CG coordinate => check pos+1
+			# 0-based!
+			# C coordinate
 			pos = int(line.split()[1])
-			if len(enhancer[cur_chr][pos]) > 0 or len(enhancer[cur_chr][pos+1]) > 0:
-				for elem in enhancer[cur_chr][pos]:
-					fout.write(elem.data.name)
-				fout.write('\n')
+			strand = line.split()[2]
+			if strand == '+':
+				if len(enhancer[cur_chr][pos]) > 0 or len(enhancer[cur_chr][pos+1]) > 0:
+					fout.write(str(pos) + '\t')
+					for elem in enhancer[cur_chr][pos]:
+						fout.write(elem.data + '\t')
+					for elem in enhancer[cur_chr][pos+1]:
+						fout.write(elem.data + '\t')
+					fout.write('\n')
+				else:
+					fout.write(str(pos) + '\t-\n')
+			elif strand == '-':
+				if len(enhancer[cur_chr][pos]) > 0 or len(enhancer[cur_chr][pos-1]) > 0:
+					fout.write(str(pos) + '\t')
+					for elem in enhancer[cur_chr][pos]:
+						fout.write(elem.data + '\t')
+					for elem in enhancer[cur_chr][pos-1]:
+						fout.write(elem.data + '\t')
+					fout.write('\n')
+				else:
+					fout.write(str(pos) + '\t-\n')
 			else:
-				fout.write('-\n')
+				print 'unknown strad', strand
+				fout.write(str(pos) + '\n')
 		fout.close()
 
 if __name__ == '__main__':
