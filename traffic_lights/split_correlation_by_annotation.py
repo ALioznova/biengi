@@ -90,7 +90,7 @@ def background_for_gc_and_cpg_ann(tl_background, annotation):
 	background_dict_ann = {}
 	for (tl_id, tl) in tl_background.iteritems():
 		if not background_dict_gc.has_key(tl.gc_content):
-			background_dict[tl.gc_content] = []
+			background_dict_gc[tl.gc_content] = []
 		background[tl.gc_content].append(tl_id)
 		if not background_dict_cpg.has_key(tl.cpg_content):
 			background_dict_cpg[tl.cpg_content] = []
