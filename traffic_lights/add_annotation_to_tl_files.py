@@ -60,8 +60,9 @@ if __name__ == '__main__':
 					else:
 						cur_data = line.split()[1:]
 						cur_data_f = [float(e) for e in cur_data]
-						cur_median = str(numpy.median(cur_data_f))
-						new_annotation[cur_line_num] += ',' + annotation_name + '=' + cur_median
+						cur_data_f = cur_data_f[len(cur_data_f)/2-1: len(cur_data_f)/2+1]
+						cur_mean = str(numpy.mean(cur_data_f))
+						new_annotation[cur_line_num] += ',' + annotation_name + '=' + cur_mean
 					cur_line_num += 1
 				anf.close()
 		for i in xrange(len(tl_data)):

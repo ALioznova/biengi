@@ -16,7 +16,12 @@ class tl_record:
 		self.gene_info = tl_line.split()[0]
 		self.pos = int(tl_line.split()[1])
 		self.strand = tl_line.split()[2]
-		self.annotation = tl_line.split()[3].split(',')
+		self.annotation = {}
+		for elem in tl_line.split()[3].split(','):
+			if len(elem.split('=')) == 1:
+				self.annotation[elem] = True
+			else:
+				self.annotation[elem.split('=')[0]] = float(elem.split('=')[1])
 		assert tl_line.split()[4].startswith('(')
 		self.num = int(tl_line.split()[4][1:])
 		self.corr = float(tl_line.split()[5])
@@ -60,17 +65,17 @@ def get_annotations(tl_pos_corr, tl_neg_corr):
 	annotations = Set()
 	for tl_records_scope in (tl_pos_corr, tl_neg_corr):
 		for tlr in tl_records_scope.itervalues():
-			for a in tlr.annotation:
+			for a in tlr.annotation.keys():
 				annotations.add(a)
 	return annotations
 
 def split_for_background(tl_records_scope):
-	p_val_threshold = 0.2
+	p_fdr_threshold = 0.2
 	tl_pos_corr = {}
 	tl_neg_corr = {}
 	tl_background = {}
 	for (key, tl) in tl_records_scope.iteritems():
-		if tl.p_corr_fdr < p_val_threshold:
+		if tl.p_corr_fdr < p_fdr_threshold:
 			if tl.corr > 0:
 				tl_pos_corr[key] = tl
 			elif tl.corr < 0:
@@ -79,53 +84,92 @@ def split_for_background(tl_records_scope):
 			tl_background[key] = tl
 	return (tl_background, tl_pos_corr, tl_neg_corr)
 
-def background_for_gc_and_cpg(tl_background):
-	background_dict = {}
+def background_for_gc_and_cpg_ann(tl_background, annotation):
+	background_dict_gc = {}
+	background_dict_cpg = {}
+	background_dict_ann = {}
 	for (tl_id, tl) in tl_background.iteritems():
-		if not background_dict.has_key(tl.gc_content):
-			background_dict[tl.gc_content] = {}
-		if not background_dict[tl.gc_content].has_key(tl.cpg_content):
-			background_dict[tl.gc_content][tl.cpg_content] = []
-		background_dict[tl.gc_content][tl.cpg_content].append(tl_id)
-	return background_dict
+		if not background_dict_gc.has_key(tl.gc_content):
+			background_dict[tl.gc_content] = []
+		background[tl.gc_content].append(tl_id)
+		if not background_dict_cpg.has_key(tl.cpg_content):
+			background_dict_cpg[tl.cpg_content] = []
+		background[tl.cpg_content].append(tl_id)
+		if not background_dict_ann.has_key(tl.annotation[annotation]):
+			background_dict_cpg[tl.annotation[annotation]] = []
+		background[tl.annotation[annotation]].append(tl_id)
+	return (background_dict_gc, background_dict_cpg, background_dict_ann)
 
 def get_annotated_records(annotation, tl_records_scope):
 	annotated_tl = {}
 	for (tl_id, tl) in tl_records_scope.iteritems():
-		if annotation in tl.annotation:
+		if annotation in tl.annotation.keys():
 			annotated_tl[tl_id] = tl
 	return annotated_tl
 
-def find_closest_cg_and_cpg(tl, tl_records_scope):
-	background_dict = background_for_gc_and_cpg(tl_records_scope)
+def find_closest_cg_and_cpg_an(tl, tl_records_scope, annotation):
+	(background_dict_gc, background_dict_cpg, background_dict_ann) = background_for_gc_and_cpg_ann(tl_records_scope, annotation)
 	gc_max_difference = 0.05
-	sorted_gc = sorted(background_dict.keys())
+	sorted_gc = sorted(background_dict_gc.keys())
 	gc_index = bisect.bisect_left(sorted_gc, tl.gc_content)
-	if sorted_gc[gc_index] != tl.gc_content:
-		if gc_index!=0 and gc_index!=len(sorted_gc) and abs(sorted_gc[gc_index-1] - tl.gc_content) < abs(sorted_gc[gc_index] - tl.gc_content) and abs(sorted_gc[gc_index-1] - tl.gc_content) < abs(sorted_gc[gc_index+1] - tl.gc_content):
-			gc_index = gc_index-1
-		elif gc_index!=0 and gc_index!=len(sorted_gc) and abs(sorted_gc[gc_index+1] - tl.gc_content) < abs(sorted_gc[gc_index] - tl.gc_content) and abs(sorted_gc[gc_index+1] - tl.gc_content) < abs(sorted_gc[gc_index-1] - tl.gc_content):
-			gc_index = gc_index+1
-	if abs(sorted_gc[gc_index] - tl.gc_content) >= tl.gc_content * gc_max_difference:
-		return None
-	cpg_max_difference = 0.05
-	sorted_cpg = sorted(background_dict[sorted_gc[gc_index]].keys())
-	cpg_index = bisect.bisect_left(sorted_cpg, tl.cpg_content)
-	if sorted_cpg[cpg_index] != tl.cpg_content:
-		if cpg_index!=0 and cpg_index!=len(sorted_cpg) and abs(sorted_cpg[cpg_index-1] - tl.cpg_content) < abs(sorted_cpg[cpg_index] - tl.cpg_content) and abs(sorted_cpg[cpg_index-1] - tl.cpg_content) < abs(sorted_cpg[cpg_index+1] - tl.cpg_content):
-			cpg_index = cpg_index-1
-		elif cpg_index!=0 and cpg_index!=len(sorted_cpg) and abs(sorted_cpg[cpg_index+1] - tl.cpg_content) < abs(sorted_cpg[cpg_index] - tl.cpg_content) and abs(sorted_cpg[cpg_index+1] - tl.cpg_content) < abs(sorted_cpg[cpg_index-1] - tl.cpg_content):
-			cpg_index = cpg_index+1
-	if abs(sorted_cpg[cpg_index] - tl.cpg_content) >= tl.cpg_content * cpg_max_difference:
-		return None
-	closest_tl_id = background_dict[sorted_gc[gc_index]][sorted_cpg[cpg_index]][random.randint(0, len(background_dict[sorted_gc[gc_index]][sorted_cpg[cpg_index]])-1)]
-	return tl_records_scope[closest_tl_id]
+	gc_set = Set()
+	pos = gc_index
+	while sorted_gc[pos] >= tl.gc_content * (1 - gc_max_difference):
+		for tl_id in background_dit_gc[sorted_gc[pos]]:
+			gc_set.add(tl_id)
+		pos -= 1
+	pos = gc_index
+	while sorted_gc[pos] <= tl.gc_content * (1 + gc_max_difference):
+		for tl_id in background_dit_gc[sorted_gc[pos]]:
+			gc_set.add(tl_id)
+		pos += 1
 
-def build_tl_pairs(main_tl, background_tl):
+	cpg_max_difference = 0.05
+	sorted_cpg = sorted(background_dict_cpg.keys())
+	cpg_index = bisect.bisect_left(sorted_cpg, tl.cpg_content)
+	cpg_set = Set()
+	pos = cpg_index
+	while sorted_cpg[pos] >= tl.cpg_content * (1 - cpg_max_difference):
+		for tl_id in background_dit_cpg[sorted_cpg[pos]]:
+			cpg_set.add(tl_id)
+		pos -= 1
+	pos = cpg_index
+	while sorted_cpg[pos] <= tl.cpg_content * (1 + cpg_max_difference):
+		for tl_id in background_dit_cpg[sorted_cpg[pos]]:
+			cpg_set.add(tl_id)
+		pos += 1
+
+	ann_max_difference = 0.1
+	sorted_ann = sorted(background_dict_ann.keys())
+	ann_set = None
+	if len(sorted_ann) > 1:
+		ann_index = bisect.bisect_left(sorted_ann, tl.annotation[annotation])
+		ann_set = Set()
+		pos = ann_index
+		while sorted_ann[pos] >= tl.annotation[annotation] * (1 - ann_max_difference):
+			for tl_id in background_dit_ann[sorted_ann[pos]]:
+				ann_set.add(tl_id)
+			pos -= 1
+		pos = ann_index
+		while sorted_ann[pos] <= tl.annotation[annotation] * (1 + ann_max_difference):
+			for tl_id in background_dit_ann[sorted_ann[pos]]:
+				ann_set.add(tl_id)
+			pos += 1
+
+	result = gc_set.intersection(cpg_set)
+	if ann_set:
+		result = result.intersection(ann_set)
+	if len(result) > 0:
+		ans = list(result)[random.randint(0, len(result))]
+	else:
+		ans = None
+	return ans
+
+def build_tl_pairs(main_tl, background_tl, annotation):
 	main_corr = []
 	background_corr = []
 	for (tl_id, tl) in main_tl.iteritems():
-		background_record = find_closest_cg_and_cpg(tl, background_tl)
+		background_record = find_closest_cg_and_cpg_an(tl, background_tl, annotation)
 		if background_record :
 			main_corr.append(tl.corr)
 			background_corr.append(background_record.corr)
@@ -164,18 +208,23 @@ if __name__ == '__main__':
 	annotations = get_annotations(tl_pos_corr, tl_neg_corr)
 	for annotation in annotations:
 		print annotation
+		if annotation in ['Intron', 'Encode_TRIM28', 'Encode_MYBL2', 'Encode_SMARCC1', 'Encode_SMARCC2', 'Encode_FAM48A', 'Encode_ESR1', 'Encode_MBD4', 'Encode_GATA1', 'Encode_GATA2', 'Encode_GATA3', 'Encode_BACH1', 'Encode_NR2F2', 'Encode_CHD2', 'Encode_CHD1', 'Encode_TFAP2C', 'Encode_FOSL2', 'Encode_TFAP2A', 'Encode_BATF', 'Encode_eGFP-GATA2', 'Encode_ELK4', 'Encode_FOXP2', 'Encode_GTF3C2', 'Encode_ELK1', 'Encode_SMARCB1', 'Encode_SMC3', 'Encode_IKZF1', 'Encode_FOS', 'Encode_ESRRA', 'Encode_ZNF217', 'Encode_TCF7L2', 'Encode_HDAC2', 'Encode_HDAC1', 'Encode_MXI1', 'Encode_eGFP-HDAC8', 'Encode_HDAC6', 'Encode_ZNF274', 'Encode_JUN', 'Encode_SUZ12', 'Encode_BDP1', 'Encode_KDM5A', 'Encode_GRp20', 'Encode_PHF8', 'Encode_PRDM1', 'Encode_NFE2', 'Encode_ZBTB33', 'Encode_YY1', 'Encode_GABPA', 'Encode_RAD21', 'Exon', 'Encode_BHLHE40', 'Encode_FOXA2', 'Encode_FOXA1', 'Encode_CTCFL', 'Encode_HSF1', 'Encode_HNF4A', 'Encode_BCL11A', 'Encode_EBF1', 'Encode_ZNF263', 'Encode_CEBPD', 'Encode_BCLAF1', 'Encode_CEBPB', 'Encode_PAX5', 'Encode_RCOR1', 'Encode_MTA3', 'Enhancer', 'Encode_RELA', 'Encode_NRF1', 'Encode_SREBP1', 'Encode_MAFF', 'Encode_MAFK', 'CpGIsland', 'Encode_NR2C2', 'CpGBeacon', 'Encode_CBX3', 'Encode_USF1', 'Encode_USF2', 'Encode_THAP1', 'Encode_CTBP2', 'Encode_TAL1', 'Encode_CCNT2', 'Encode_SIX5', 'Encode_MYC', 'Encode_HMGN3', 'Encode_TCF12', 'Encode_POLR2A', 'Encode_KAP1', 'Encode_ZNF143', 'Encode_ZZZ3', 'Encode_ELF1', 'Encode_BRF2', 'Encode_ETS1', 'Encode_EGR1', 'Encode_SP4', 'Encode_SP2', 'Encode_EZH2', 'Encode_SP1', 'Encode_POU5F1', 'Encode_SPI1', 'Encode_eGFP-FOS', 'Encode_MAZ', 'Encode_MAX', 'Encode_NANOG', 'Encode_EP300', 'Encode_TBL1XR1', 'Encode_BCL3', 'Encode_HA-E2F1', 'Encode_FOXM1', 'Encode_TEAD4', 'Encode_RDBP', 'Encode_SIRT6', 'Outside', 'Encode_REST', 'Encode_ZKSCAN1', 'Encode_NR3C1', 'Encode_FOSL1', 'Encode_RXRA', 'Encode_E2F4', 'Encode_E2F6', 'Encode_E2F1', 'Encode_ZEB1', 'Encode_RUNX3', 'Encode_WRNIP1', 'Encode_NFYA', 'Intron', 'Encode_NFYB', 'Encode_ATF3', 'Encode_ATF2', 'Encode_ATF1', 'Encode_SETDB1', 'Encode_CREB1', 'Encode_GTF2F1', 'Encode_TAF1', 'Encode_SIN3AK20', 'Encode_STAT5A', 'Encode_UBTF', 'Encode_ARID3A', 'Encode_SIN3A', 'Encode_SMARCA4', 'Encode_IRF1', 'Encode_IRF3', 'Encode_IRF4', 'Encode_GTF2B', 'Encode_CTCF', 'Encode_TAF7', 'Encode_PML', 'Encode_PPARGC1A', 'Encode_RFX5', 'Encode_eGFP-JUND', 'Encode_BRCA1', 'Encode_SAP30', 'Encode_eGFP-JUNB', 'Encode_RBBP5', 'Promoter', 'Encode_JUND', 'Encode_MEF2A', 'Encode_MEF2C', 'Encode_NFATC1', 'Encode_HNF4G', 'Encode_NFIC', 'Encode_POU2F2', 'Encode_SRF', 'Encode_TBP', 'Encode_KDM5B', 'Encode_ZBTB7A', 'Encode_TCF3', 'Encode_PBX3', 'Encode_STAT1', 'Encode_STAT3', 'Encode_STAT2', 'Encode_RPC155']:
+			continue
 		tl_pos_corr_an = get_annotated_records(annotation, tl_pos_corr)
 		tl_neg_corr_an = get_annotated_records(annotation, tl_neg_corr)
 		tl_background_an = get_annotated_records(annotation, tl_background)
 		print 'TL', len(tl_pos_corr_an) + len (tl_neg_corr_an), 'of', len(tl_pos_corr) + len(tl_neg_corr)
 		print 'bg', len(tl_background_an), 'of', len(tl_background)
-		(pos_corr, background_pos_corr) = build_tl_pairs(tl_pos_corr_an, tl_pos_corr_an)
-		print 'pairs selected'
+		
+		(pos_corr, background_pos_corr) = build_tl_pairs(tl_pos_corr_an, tl_pos_corr_an, annotation)
+		print 'pos pairs selected'
 		out_pos = open(os.path.join(out_dir, annotation + '_pos.txt'), 'w')
 		for i in xrange(len(pos_corr)):
 			out_pos.write(str(pos_corr[i]) + '\t' + str(background_pos_corr[i]) + '\n')
 		out_pos.close()
-		(neg_corr, background_neg_corr) = build_tl_pairs(tl_neg_corr_an, tl_neg_corr_an)
+		
+		(neg_corr, background_neg_corr) = build_tl_pairs(tl_neg_corr_an, tl_neg_corr_an, annotation)
+		print 'neg pairs selected'
 		out_neg = open(os.path.join(out_dir, annotation + '_neg.txt'), 'w')
 		for i in xrange(len(neg_corr)):
 			out_neg.write(str(neg_corr[i]) + '\t' + str(background_neg_corr[i]) + '\n')
