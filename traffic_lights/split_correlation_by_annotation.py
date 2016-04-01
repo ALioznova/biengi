@@ -91,13 +91,13 @@ def background_for_gc_and_cpg_ann(tl_background, annotation):
 	for (tl_id, tl) in tl_background.iteritems():
 		if not background_dict_gc.has_key(tl.gc_content):
 			background_dict_gc[tl.gc_content] = []
-		background[tl.gc_content].append(tl_id)
+		background_dict_gc[tl.gc_content].append(tl_id)
 		if not background_dict_cpg.has_key(tl.cpg_content):
 			background_dict_cpg[tl.cpg_content] = []
-		background[tl.cpg_content].append(tl_id)
+		background_dict_cpg[tl.cpg_content].append(tl_id)
 		if not background_dict_ann.has_key(tl.annotation[annotation]):
-			background_dict_cpg[tl.annotation[annotation]] = []
-		background[tl.annotation[annotation]].append(tl_id)
+			background_dict_ann[tl.annotation[annotation]] = []
+		background_dict_ann[tl.annotation[annotation]].append(tl_id)
 	return (background_dict_gc, background_dict_cpg, background_dict_ann)
 
 def get_annotated_records(annotation, tl_records_scope):
@@ -114,13 +114,13 @@ def find_closest_cg_and_cpg_an(tl, tl_records_scope, annotation):
 	gc_index = bisect.bisect_left(sorted_gc, tl.gc_content)
 	gc_set = Set()
 	pos = gc_index
-	while sorted_gc[pos] >= tl.gc_content * (1 - gc_max_difference):
-		for tl_id in background_dit_gc[sorted_gc[pos]]:
+	while pos >= 0 and sorted_gc[pos] >= tl.gc_content * (1 - gc_max_difference):
+		for tl_id in background_dict_gc[sorted_gc[pos]]:
 			gc_set.add(tl_id)
 		pos -= 1
 	pos = gc_index
-	while sorted_gc[pos] <= tl.gc_content * (1 + gc_max_difference):
-		for tl_id in background_dit_gc[sorted_gc[pos]]:
+	while pos < len(sorted_gc) and sorted_gc[pos] <= tl.gc_content * (1 + gc_max_difference):
+		for tl_id in background_dict_gc[sorted_gc[pos]]:
 			gc_set.add(tl_id)
 		pos += 1
 
@@ -129,13 +129,13 @@ def find_closest_cg_and_cpg_an(tl, tl_records_scope, annotation):
 	cpg_index = bisect.bisect_left(sorted_cpg, tl.cpg_content)
 	cpg_set = Set()
 	pos = cpg_index
-	while sorted_cpg[pos] >= tl.cpg_content * (1 - cpg_max_difference):
-		for tl_id in background_dit_cpg[sorted_cpg[pos]]:
+	while pos >= 0 and sorted_cpg[pos] >= tl.cpg_content * (1 - cpg_max_difference):
+		for tl_id in background_dict_cpg[sorted_cpg[pos]]:
 			cpg_set.add(tl_id)
 		pos -= 1
 	pos = cpg_index
-	while sorted_cpg[pos] <= tl.cpg_content * (1 + cpg_max_difference):
-		for tl_id in background_dit_cpg[sorted_cpg[pos]]:
+	while pos < len(sorted_cpg) and sorted_cpg[pos] <= tl.cpg_content * (1 + cpg_max_difference):
+		for tl_id in background_dict_cpg[sorted_cpg[pos]]:
 			cpg_set.add(tl_id)
 		pos += 1
 
@@ -146,13 +146,13 @@ def find_closest_cg_and_cpg_an(tl, tl_records_scope, annotation):
 		ann_index = bisect.bisect_left(sorted_ann, tl.annotation[annotation])
 		ann_set = Set()
 		pos = ann_index
-		while sorted_ann[pos] >= tl.annotation[annotation] * (1 - ann_max_difference):
-			for tl_id in background_dit_ann[sorted_ann[pos]]:
+		while pos >= 0 and sorted_ann[pos] >= tl.annotation[annotation] * (1 - ann_max_difference):
+			for tl_id in background_dict_ann[sorted_ann[pos]]:
 				ann_set.add(tl_id)
 			pos -= 1
 		pos = ann_index
-		while sorted_ann[pos] <= tl.annotation[annotation] * (1 + ann_max_difference):
-			for tl_id in background_dit_ann[sorted_ann[pos]]:
+		while pos < len(sorted_ann) and sorted_ann[pos] <= tl.annotation[annotation] * (1 + ann_max_difference):
+			for tl_id in background_dict_ann[sorted_ann[pos]]:
 				ann_set.add(tl_id)
 			pos += 1
 
@@ -160,7 +160,8 @@ def find_closest_cg_and_cpg_an(tl, tl_records_scope, annotation):
 	if ann_set:
 		result = result.intersection(ann_set)
 	if len(result) > 0:
-		ans = list(result)[random.randint(0, len(result))]
+		ans_id = random.randint(0, len(result)-1)
+		ans = tl_records_scope[list(result)[ans_id]]
 	else:
 		ans = None
 	return ans
@@ -168,12 +169,14 @@ def find_closest_cg_and_cpg_an(tl, tl_records_scope, annotation):
 def build_tl_pairs(main_tl, background_tl, annotation):
 	main_corr = []
 	background_corr = []
+	annotation_val = []
 	for (tl_id, tl) in main_tl.iteritems():
 		background_record = find_closest_cg_and_cpg_an(tl, background_tl, annotation)
 		if background_record :
 			main_corr.append(tl.corr)
 			background_corr.append(background_record.corr)
-	return (main_corr, background_corr)
+			annotation_val.append(background_record.annotation[annotation])
+	return (main_corr, background_corr, annotation_val)
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -216,17 +219,17 @@ if __name__ == '__main__':
 		print 'TL', len(tl_pos_corr_an) + len (tl_neg_corr_an), 'of', len(tl_pos_corr) + len(tl_neg_corr)
 		print 'bg', len(tl_background_an), 'of', len(tl_background)
 		
-		(pos_corr, background_pos_corr) = build_tl_pairs(tl_pos_corr_an, tl_pos_corr_an, annotation)
+		(pos_corr, background_pos_corr, annotation_val_pos) = build_tl_pairs(tl_pos_corr_an, tl_pos_corr_an, annotation)
 		print 'pos pairs selected'
 		out_pos = open(os.path.join(out_dir, annotation + '_pos.txt'), 'w')
 		for i in xrange(len(pos_corr)):
-			out_pos.write(str(pos_corr[i]) + '\t' + str(background_pos_corr[i]) + '\n')
+			out_pos.write(str(pos_corr[i]) + '\t' + str(background_pos_corr[i]) + 't' + str(annotation_val_pos[i]) + '\n')
 		out_pos.close()
 		
-		(neg_corr, background_neg_corr) = build_tl_pairs(tl_neg_corr_an, tl_neg_corr_an, annotation)
+		(neg_corr, background_neg_corr, annotation_val_neg) = build_tl_pairs(tl_neg_corr_an, tl_neg_corr_an, annotation)
 		print 'neg pairs selected'
 		out_neg = open(os.path.join(out_dir, annotation + '_neg.txt'), 'w')
 		for i in xrange(len(neg_corr)):
-			out_neg.write(str(neg_corr[i]) + '\t' + str(background_neg_corr[i]) + '\n')
+			out_neg.write(str(neg_corr[i]) + '\t' + str(background_neg_corr[i]) + '\t' + annotation_val_neg[i] + '\n')
 		out_neg.close()
 		print
