@@ -10,9 +10,11 @@ import random
 import bisect
 
 class tl_record:
-	def __init__(self, gc_content, cpg_content, tl_line, tl_id):
+	def __init__(self, gc_content, cpg_content, tl_line, tl_line_num, tl_chr, tl_id):
 		self.gc_content = gc_content
 		self.cpg_content = cpg_content
+		self.line_num = tl_line_num # 1-based
+		self.chr = tl_chr
 		self.gene_info = tl_line.split()[0]
 		self.pos = int(tl_line.split()[1])
 		self.strand = tl_line.split()[2]
@@ -39,12 +41,14 @@ def compute_content_for_chr(ref_file_name, tl_file_name, tl_records_scope):
 	cur_chr = cur_chr[0]
 	print(cur_chr.id)
 	tl_id = len(tl_records_scope)
+	tl_line_num = 1
 	for line in open(tl_file_name):
 		pos = (int(line.split()[1]))
 		gc_content = (GC(cur_chr.seq[pos-window:pos+window+1]))
 		cpg_content = (cur_chr.seq[pos-window:pos+window+1].upper().count('CG'))
-		tl_records_scope[tl_id] = tl_record(gc_content, cpg_content, line, tl_id)
+		tl_records_scope[tl_id] = tl_record(gc_content, cpg_content, line, tl_line_num, cur_chr.id, tl_id)
 		tl_id += 1
+		tl_line_num += 1
 
 def compute_content(ref_dir, tl_dir):
 	tl_records_scope = {}
@@ -159,34 +163,26 @@ def find_closest_cg_and_cpg_an(tl, tl_records_scope, annotation):
 	result = gc_set.intersection(cpg_set)
 	if ann_set:
 		result = result.intersection(ann_set)
-	if len(result)>0:
-		return result
-	else:
-		return None
+	return result
 
 def build_tl_pairs(main_tl, background_tl, annotation):
-	main_corr = []
-	background_corr = []
-	annotation_val = []
+	pairs_list = []
 	bg_used_id = Set()
 	for (tl_id, tl) in main_tl.iteritems():
 		background_records_id = find_closest_cg_and_cpg_an(tl, background_tl, annotation)
-		if background_records_id :
-			bg_record = None
-			while not bg_record and len(background_records_id)>0:
-				possible_id_index = random.randint(0, len(background_records_id)-1)
-				possible_id = list(background_records_id)[possible_id_index]
-				if not possible_id in bg_used_id:
-					bg_record = background_tl[possible_id]
-					bg_used_id.add(possible_id)
-					break
-				else:
-					background_records_id.remove(possible_id)
-			if bg_record:
-				main_corr.append(tl.corr)
-				background_corr.append(bg_record.corr)
-				annotation_val.append(tl.annotation[annotation])
-	return (main_corr, background_corr, annotation_val)
+		bg_record = None
+		while len(background_records_id) > 0:
+			possible_id_index = random.randint(0, len(background_records_id)-1)
+			possible_id = list(background_records_id)[possible_id_index]
+			if not possible_id in bg_used_id:
+				bg_record = background_tl[possible_id]
+				bg_used_id.add(possible_id)
+				break
+			else:
+				background_records_id.remove(possible_id)
+		if not bg_record is None:
+			pairs_list.append((tl, bg_record))
+	return pairs_list
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -229,17 +225,33 @@ if __name__ == '__main__':
 		print 'TL', len(tl_pos_corr_an) + len (tl_neg_corr_an), 'of', len(tl_pos_corr) + len(tl_neg_corr)
 		print 'bg', len(tl_background_an), 'of', len(tl_background)
 		
-		(pos_corr, background_pos_corr, annotation_val_pos) = build_tl_pairs(tl_pos_corr_an, tl_background_an, annotation)
+		pos_pairs = build_tl_pairs(tl_pos_corr_an, tl_background_an, annotation)
 		print 'pos pairs selected'
 		out_pos = open(os.path.join(out_dir, annotation + '_pos.txt'), 'w')
-		for i in xrange(len(pos_corr)):
-			out_pos.write(str(pos_corr[i]) + '\t' + str(background_pos_corr[i]) + 't' + str(annotation_val_pos[i]) + '\n')
+		for i in xrange(len(pos_pairs)):
+			(tl_record, bg_record) = pos_pairs[i]
+			tl_annotation_val = str(tl_record.annotation[annotation])
+			tl_corr = str(tl_record.corr)
+			bg_corr = str(bg_record.corr)
+			tl_chr = tl_record.chr
+			tl_line_num = str(tl_record.line_num)
+			bg_chr = bg_record.chr
+			bg_line_num = str(bg_record.line_num)
+			out_pos.write(tl_corr + '\t' + bg_corr + '\t' + tl_annotation_val + '\t' + tl_chr + ':' + tl_line_num + '\t' + bg_chr + ':' + bg_line_num + '\n')
 		out_pos.close()
 		
-		(neg_corr, background_neg_corr, annotation_val_neg) = build_tl_pairs(tl_neg_corr_an, tl_background_an, annotation)
+		neg_pairs = build_tl_pairs(tl_neg_corr_an, tl_background_an, annotation)
 		print 'neg pairs selected'
 		out_neg = open(os.path.join(out_dir, annotation + '_neg.txt'), 'w')
-		for i in xrange(len(neg_corr)):
-			out_neg.write(str(neg_corr[i]) + '\t' + str(background_neg_corr[i]) + '\t' + str(annotation_val_neg[i]) + '\n')
+		for i in xrange(len(neg_pairs)):
+			(tl_record, bg_record) = neg_pairs[i]
+			tl_annotation_val = str(tl_record.annotation[annotation])
+			tl_corr = str(tl_record.corr)
+			bg_corr = str(bg_record.corr)
+			tl_chr = tl_record.chr
+			tl_line_num = str(tl_record.line_num)
+			bg_chr = bg_record.chr
+			bg_line_num = str(bg_record.line_num)
+			out_neg.write(tl_corr + '\t' + bg_corr + '\t' + tl_annotation_val + '\t' + tl_chr + ':' + tl_line_num + '\t' + bg_chr + ':' + bg_line_num + '\n')
 		out_neg.close()
 		print
