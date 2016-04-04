@@ -136,10 +136,13 @@ def find_pair(tl, tl_records_scope):
 	result = gc_set.intersection(cpg_set)
 	return result
 
-def build_tl_pairs(main_tl, background_tl):
+def build_tl_pairs(main_tl, background_tl, outf):
+	outf = open(outf, 'w')
 	pairs_list = []
 	bg_used_id = Set()
+	cur_num = 0
 	for (tl_id, tl) in main_tl.iteritems():
+		cur_num += 1
 		background_records_id = find_pair(tl, background_tl)
 		bg_record = None
 		while len(background_records_id) > 0:
@@ -147,12 +150,31 @@ def build_tl_pairs(main_tl, background_tl):
 			possible_id = list(background_records_id)[possible_id_index]
 			if not possible_id in bg_used_id:
 				bg_record = background_tl[possible_id]
+				outf.write(tl.chr + ':' + str(tl.line_num) + '\t' + bg_record.chr + ':' + str(bg_record.line_num) + '\n')
+				print 'n=', cur_num, tl.tl_id, bg_record.tl_id
 				bg_used_id.add(possible_id)
+#				del background_tl[possible_id]
 				break
 			else:
 				background_records_id.remove(possible_id)
 		if not bg_record is None:
 			pairs_list.append((tl, bg_record))
+	outf.close()
+	return pairs_list
+
+def read_tl_pairs(main_tl, background_tl, outf):
+	tl_id_dict = {}
+	for (tl_id, tl) in main_tl.iteritems():
+		tl_id_dict[tl.chr + ':' + str(tl.line_num)] = tl_id
+	bg_id_dict = {}
+	for (bg_id, bg) in background_tl.iteritems():
+		bg_id_dict[bg.chr + ':' + str(bg.line_num)] = bg_id
+	pairs_list = []
+	for line in open(outf):
+		(tl_info, bg_info) = line.split()
+		tl = tl_id_dict[tl_info]
+		bg_record = bg_id_dict[bg_info]
+		pairs_list.append((main_tl[tl], background_tl[bg_record]))
 	return pairs_list
 
 if __name__ == '__main__':
@@ -184,17 +206,16 @@ if __name__ == '__main__':
 
 	tl_records_scope = compute_content(ref_dir, tl_dir)
 	(bg, tl) = split_for_background(tl_records_scope)
-	pairs = build_tl_pairs(tl, bg)
+	outf = os.path.join(out_dir, 'Pairs.txt')
+#	pairs = build_tl_pairs(tl, bg, outf)
+	pairs = read_tl_pairs(tl, bg, outf)
 	print 'pairs', len(pairs)
-	outf = open(os.path.join(out_dir, 'Pairs.txt'), 'w')
 	bg_dict = {}
 	tl_dict = {}
 	for pair in pairs:
 		(tl_r, bg_r) = pair
 		bg_dict[bg_r.tl_id] = bg_r
 		tl_dict[tl_r.tl_id] = tl_r
-		outf.write(tl_r.chr + ':' + str(tl_r.line_num) + '\t' + bg_r.chr + ':' + str(bg_r.line_num) + '\n')
-	outf.close()
 
 	annotations = get_annotations(tl)
 	for annotation in annotations:
@@ -204,11 +225,11 @@ if __name__ == '__main__':
 		
 		out_tl = open(os.path.join(out_dir, annotation + '_tl.txt'), 'w')
 		for tl_r in tl_an.itervalues():
-			out_tl.write(tl_r.chr + ':' + str(tl_r.line_num) + '\t' + tl_r.annotation[annotation] + '\n')
+			out_tl.write(tl_r.chr + ':' + str(tl_r.line_num) + '\t' + str(tl_r.annotation[annotation]) + '\n')
 		out_tl.close()
 
 		out_bg = open(os.path.join(out_dir, annotation + '_bg.txt'), 'w')
 		for bg_r in bg_an.itervalues():
-			out_bg.write(bg_r.chr + ':' + str(bg_r.line_num) + '\t' + bg_r.annotation[annotation] + '\n')
+			out_bg.write(bg_r.chr + ':' + str(bg_r.line_num) + '\t' + str(bg_r.annotation[annotation]) + '\n')
 		out_bg.close()
 
