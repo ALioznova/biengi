@@ -174,7 +174,8 @@ def read_tl_pairs(main_tl, background_tl, outf):
 		(tl_info, bg_info) = line.split()
 		tl = tl_id_dict[tl_info]
 		bg_record = bg_id_dict[bg_info]
-		pairs_list.append((main_tl[tl], background_tl[bg_record]))
+		if main_tl[tl].corr < 0:
+			pairs_list.append((main_tl[tl], background_tl[bg_record]))
 	return pairs_list
 
 if __name__ == '__main__':
@@ -182,7 +183,7 @@ if __name__ == '__main__':
 		print 'Usage:', sys.argv[0], '-r <reference directory> -t <traffic lights directory> -o <output directory>'
 		exit()
 
-	random.seed(1)
+	random.seed(6)
 	
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='GC and CpG content count')
 	parser.add_argument('-r', '--ref_dir', help='reference directory', required=True)

@@ -51,17 +51,26 @@ if __name__ == '__main__':
 			annotation = f_pos[:-len('_pos.txt')]
 			f_neg = os.path.join(data_dir, f_neg)
 			f_pos = os.path.join(data_dir, f_pos)
+		print annotation
 		pos_corr = []
 		pos_bg = []
+		pos_ann = []
 		neg_corr = []
 		neg_bg = []
+		neg_ann = []
 		for line in open(f_pos):
 			pos_corr.append(float(line.split()[0]))
 			pos_bg.append(float(line.split()[1]))
+			pos_ann.append(line.split()[2])
 		for line in open(f_neg):
 			neg_corr.append(float(line.split()[0]))
 			neg_bg.append(float(line.split()[1]))
-		draw_hist([pos_corr, pos_bg, neg_corr, neg_bg], ['tl+', 'bg+', 'tl-', 'bg-'], ['deeppink', 'pink', 'deepskyblue', 'skyblue'], os.path.join(pic_dir, annotation + '.png'), annotation, 35)
+			neg_ann.append(line.split()[2])
+		if len(pos_corr) == 0 or len(neg_corr) == 0:
+			continue
+		tl_corr = pos_corr + neg_corr
+		bg_corr = pos_bg + neg_bg
+		draw_hist([tl_corr, bg_corr], ['tl', 'bg'], ['orangered', 'cyan'], os.path.join(pic_dir, annotation + '.png'), annotation, 35)
 
 
 

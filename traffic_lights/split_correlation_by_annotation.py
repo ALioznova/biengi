@@ -189,7 +189,7 @@ if __name__ == '__main__':
 		print 'Usage:', sys.argv[0], '-r <reference directory> -t <traffic lights directory> -o <output directory>'
 		exit()
 
-	random.seed(1)
+	random.seed(3)
 	
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='GC and CpG content count')
 	parser.add_argument('-r', '--ref_dir', help='reference directory', required=True)
@@ -217,7 +217,7 @@ if __name__ == '__main__':
 	annotations = get_annotations(tl_pos_corr, tl_neg_corr)
 	for annotation in annotations:
 		print annotation
-#		if annotation in ['phyloP20way', 'phastCons20way', 'repeats', 'Intron', 'wgEncodeRegDnaseClustered']:
+#		if annotation in ['Intron']:
 #			continue
 		tl_pos_corr_an = get_annotated_records(annotation, tl_pos_corr)
 		tl_neg_corr_an = get_annotated_records(annotation, tl_neg_corr)
