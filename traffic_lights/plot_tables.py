@@ -3,19 +3,32 @@
 import os
 import sys
 import argparse
-import numpy
-import pylab
+import numpy as np
+import matplotlib.pyplot as plt
 from sets import Set
 
-def draw_hist(data, data_labels, colors, pic_path, plot_label, nbins):
-	if sum([len(el) for el in data]) == 0:
-		return
-	fig_hist = pylab.figure()
-	n, bins, patches = pylab.hist(data, bins=nbins, normed=0, histtype='bar', color=colors, label=data_labels)
-	pylab.title(plot_label)
-	pylab.legend(loc='best')
-	fig_hist.savefig(pic_path)
-	pylab.close(fig_hist)
+class Data_frame:
+	def __init__(self, label, color, data, global_title):
+		self.label = label
+		self.color = color
+		self.data = data
+		self.global_title = global_title
+
+def draw_hist(data, suptitle, pic_path, nbins, normed=0):
+	plt.suptitle(suptitle, fontsize=16)
+	fig, a = plt.subplots(nrows=1,ncols=len(data), figsize=(24,6))
+	a = a.ravel()
+	for idx,ax in enumerate(a):
+		sum_len = 0
+		for elem in data[idx].data:
+			sum_len += len(elem)
+		if sum_len == 0:
+			continue
+		ax.hist(data[idx].data, bins=nbins, normed=normed, histtype='bar', color=data[idx].color, label=data[idx].label)
+		ax.set_title(data[idx].global_title)
+	plt.tight_layout()
+	fig.savefig(pic_path)
+	plt.close(fig)
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -35,7 +48,7 @@ if __name__ == '__main__':
 
 	if not os.path.exists(pic_dir):
 		os.mkdir(pic_dir)
-
+	
 	all_data = {}
 	table_dirs = os.listdir(data_dir)
 	for table_dir in table_dirs:
@@ -73,8 +86,67 @@ if __name__ == '__main__':
 			if not all_data.has_key(annotation):
 				all_data[annotation] = {}
 			all_data[annotation][table_dir[len('table'):]] = {'tl': tl_data, 'bg': bg_data}
+
+	new_ann = {}
+	new_ann['wgEncodeBroadHistoneGm12878H2azStdPk'] = 'H2az_Gm12878'
+	new_ann['wgEncodeBroadHistoneGm12878H3k27acStdPk'] = 'H3k27ac_Gm12878'
+	new_ann['wgEncodeBroadHistoneGm12878H3k27me3StdPk'] = 'H3k27me3_Gm12878_BH'
+	new_ann['wgEncodeBroadHistoneGm12878H3k27me3StdPkV2'] = 'H3k27me3_Gm12878_BHV2'
+	new_ann['wgEncodeBroadHistoneGm12878H3k36me3StdPk'] = 'H3k36me3_Gm12878_BH'
+	new_ann['wgEncodeBroadHistoneGm12878H3k4me1StdPk'] = 'H3k4me1_Gm12878'
+	new_ann['wgEncodeBroadHistoneGm12878H3k4me2StdPk'] = 'H3k4me2_Gm12878'
+	new_ann['wgEncodeBroadHistoneGm12878H3k4me3StdPk'] = 'H3k4me3_Gm12878_BH'
+	new_ann['wgEncodeBroadHistoneH1hescH2azStdPk'] = 'H2az_H1hesc'
+	new_ann['wgEncodeBroadHistoneH1hescH3k27acStdPk'] = 'H3k27ac_H1hesc'
+	new_ann['wgEncodeBroadHistoneH1hescH3k27me3StdPk'] = 'H3k27me3_H1hesc'
+	new_ann['wgEncodeBroadHistoneH1hescH3k36me3StdPk'] = 'H3k36me3_H1hesc'
+	new_ann['wgEncodeBroadHistoneH1hescH3k4me1StdPk'] = 'H3k4me1_H1hesc'
+	new_ann['wgEncodeBroadHistoneH1hescH3k4me2StdPk'] = 'H3k4me2_H1hesc'
+	new_ann['wgEncodeBroadHistoneH1hescH3k4me3StdPk'] = 'H3k4me3_H1hesc'
+	new_ann['wgEncodeBroadHistoneK562H2azStdPk'] = 'H2az_K562'
+	new_ann['wgEncodeBroadHistoneK562H3k27acStdPk'] = 'H3k27ac_K562'
+	new_ann['wgEncodeBroadHistoneK562H3k27me3StdPk'] = 'H3k27me3_K562_BH'
+	new_ann['wgEncodeBroadHistoneK562H3k36me3StdPk'] = 'H3k36me3_K562_BH'
+	new_ann['wgEncodeBroadHistoneK562H3k4me1StdPk'] = 'H3k4me1_K562_BH'
+	new_ann['wgEncodeBroadHistoneK562H3k4me2StdPk'] = 'H3k4me2_K562'
+	new_ann['wgEncodeBroadHistoneK562H3k4me3StdPk'] = 'H3k4me3_K562_BH'
+	new_ann['wgEncodeRegDnaseClustered'] = 'RegDnaseClustered'
+	new_ann['wgEncodeSydhHistoneK562H3k27me3bUcdPk'] = 'H3k27me3_K562_SH'
+	new_ann['wgEncodeSydhHistoneK562H3k4me1UcdPk'] = 'H3k4me1_K562_SH'
+	new_ann['wgEncodeSydhHistoneK562H3k4me3bUcdPk'] = 'H3k4me3_K562_SH'
+	new_ann['wgEncodeUwDgfK562Hotspots'] = 'dgf_hotspots_K562'
+	new_ann['wgEncodeUwDgfK562Pk'] = 'dgf_hotspots_K562_pk'
+	new_ann['wgEncodeUwHistoneGm12878H3k27me3StdHotspotsRep1'] = 'H3k27me3_Gm12878_UHHs1'
+	new_ann['wgEncodeUwHistoneGm12878H3k27me3StdHotspotsRep2'] = 'H3k27me3_Gm12878_UHHs2'
+	new_ann['wgEncodeUwHistoneGm12878H3k27me3StdPkRep1'] = 'H3k27me3_Gm12878_UHPk1'
+	new_ann['wgEncodeUwHistoneGm12878H3k27me3StdPkRep2'] = 'H3k27me3_Gm12878_UHPk2'
+	new_ann['wgEncodeUwHistoneGm12878H3k36me3StdHotspotsRep1'] = 'H3k36me3_Gm12878_UHHs1'
+	new_ann['wgEncodeUwHistoneGm12878H3k36me3StdHotspotsRep2'] = 'H3k36me3_Gm12878_UHHs2'
+	new_ann['wgEncodeUwHistoneGm12878H3k36me3StdPkRep1'] = 'H3k36me3_Gm12878_UHPk1'
+	new_ann['wgEncodeUwHistoneGm12878H3k36me3StdPkRep2'] = 'H3k36me3_Gm12878_UHPk2'
+	new_ann['wgEncodeUwHistoneGm12878H3k4me3StdHotspotsRep1'] = 'H3k4me3_Gm12878_UHHs1'
+	new_ann['wgEncodeUwHistoneGm12878H3k4me3StdHotspotsRep2'] = 'H3k4me3_Gm12878_UHHs2'
+	new_ann['wgEncodeUwHistoneGm12878H3k4me3StdPkRep1'] = 'H3k4me3_Gm12878_UHPk1'
+	new_ann['wgEncodeUwHistoneGm12878H3k4me3StdPkRep2'] = 'H3k4me3_Gm12878_UHPk2'
+	new_ann['wgEncodeUwHistoneK562H3k27me3StdHotspotsRep1'] = 'H3k27me3_K562_UHHs1'
+	new_ann['wgEncodeUwHistoneK562H3k27me3StdHotspotsRep2'] = 'H3k27me3_K562_UHHs2'
+	new_ann['wgEncodeUwHistoneK562H3k27me3StdPkRep1'] = 'H3k27me3_K562_UHPk1'
+	new_ann['wgEncodeUwHistoneK562H3k27me3StdPkRep2'] = 'H3k27me3_K562_UHPk2'
+	new_ann['wgEncodeUwHistoneK562H3k36me3StdHotspotsRep1'] = 'H3k36me3_K562_UHHs1'
+	new_ann['wgEncodeUwHistoneK562H3k36me3StdHotspotsRep2'] = 'H3k36me3_K562_UHHs2'
+	new_ann['wgEncodeUwHistoneK562H3k36me3StdPkRep1'] = 'H3k36me3_K562_UHPk1'
+	new_ann['wgEncodeUwHistoneK562H3k36me3StdPkRep2'] = 'H3k36me3_K562_UHPk2'
+	new_ann['wgEncodeUwHistoneK562H3k4me3StdHotspotsRep1'] = 'H3k4me3_K562_UHHs1'
+	new_ann['wgEncodeUwHistoneK562H3k4me3StdHotspotsRep2'] = 'H3k4me3_K562_UHHs2'
+	new_ann['wgEncodeUwHistoneK562H3k4me3StdPkRep1'] = 'H3k4me3_K562_UHPk1'
+	new_ann['wgEncodeUwHistoneK562H3k4me3StdPkRep2'] = 'H3k4me3_K562_UHPk2'
+
 	for annotation in all_data.iterkeys():
-		print annotation
+		if annotation in new_ann.keys():
+			ann = new_ann[annotation]
+		else:
+			ann = annotation
+		print ann
 		data_pos_tl = []
 		data_neg_tl = []
 		data_whole_tl = []
@@ -108,10 +180,15 @@ if __name__ == '__main__':
 			data_neg_bg.append(all_data[annotation][seed_neg]['bg'])
 			data_whole_tl.append(all_data[annotation][seed_whole]['tl'])
 			data_whole_bg.append(all_data[annotation][seed_whole]['bg'])
-		draw_hist(data_pos_tl + data_pos_bg, ['tl'] * len(data_pos_tl) + ['bg'] * len(data_pos_bg), ['orangered']  * len(data_pos_tl) + ['cyan'] * len(data_pos_bg), os.path.join(pic_dir, annotation + '_pos.png'), annotation + '_pos', 11)
-		draw_hist(data_neg_tl + data_neg_bg, ['tl'] * len(data_neg_tl) + ['bg'] * len(data_neg_bg), ['orangered']  * len(data_neg_tl) + ['cyan'] * len(data_neg_bg), os.path.join(pic_dir, annotation + '_neg.png'), annotation + '_neg', 11)
-		draw_hist(data_whole_tl + data_whole_bg, ['tl'] * len(data_whole_tl) + ['bg'] * len(data_whole_bg), ['orangered']  * len(data_whole_tl) + ['cyan'] * len(data_whole_bg), os.path.join(pic_dir, annotation + '_whole.png'), annotation + '_whole', 11)
 
+		df_pos = Data_frame(['tl'] * len(data_pos_tl) + ['bg'] * len(data_pos_bg),  ['orangered']  * len(data_pos_tl) + ['cyan'] * len(data_pos_bg), data_pos_tl + data_pos_bg, '+')
+		df_neg = Data_frame(['tl'] * len(data_neg_tl) + ['bg'] * len(data_neg_bg),  ['orangered']  * len(data_neg_tl) + ['cyan'] * len(data_neg_bg), data_neg_tl + data_neg_bg, '-')
+		df_whole = Data_frame(['tl'] * len(data_whole_tl) + ['bg'] * len(data_whole_bg),  ['orangered']  * len(data_whole_tl) + ['cyan'] * len(data_whole_bg), data_whole_tl + data_whole_bg, ann)
 
+		if sum([len(set(e)) for e in data_pos_tl + data_pos_bg]) > len([len(set(e)) for e in data_pos_tl + data_pos_bg]):
+			draw_hist([df_pos, df_neg, df_whole], ann, os.path.join(pic_dir, ann + '.png'), 11)
+			draw_hist([df_pos, df_neg, df_whole], ann, os.path.join(pic_dir, ann + '_normed.png'), 11, 1)
+		else:
+			draw_hist([df_pos, df_neg, df_whole], ann, os.path.join(pic_dir, ann + '.png'), 2)
 
 
