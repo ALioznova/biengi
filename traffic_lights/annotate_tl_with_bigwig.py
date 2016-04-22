@@ -15,7 +15,7 @@ def process_tl(ann_file, tl_dir, out_dir):
 			cur_chr = 'chrX'
 		elif cur_chr == 'chr24':
 			cur_chr = 'chrY'
-		out_file = os.path.join(out_dir, tl_file.split('_')[0] + '_tl_phastCons20way_annotation.txt')
+		out_file = os.path.join(out_dir, tl_file.split('_')[0] + '_tl_phyloP7way_annotation.txt')
 		fout = open(out_file, 'w')		
 		for line in open(os.path.join(tl_dir, tl_file)):
 			# 0-based
@@ -44,15 +44,11 @@ def process_tl(ann_file, tl_dir, out_dir):
 				print 'unknown strad', strand
 				fout.write(str(pos) + '\n')
 		fout.close()
-	bwh.close()
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
 		print 'Usage:', sys.argv[0], '-a <bigwig annotation file> -t <traffic lights directory> -o <output directory>'
 		exit()
-
-#	bwh = bx.bbi.bigwig_file.BigWigFile(open("/mnt/ce4404a9-911c-4f95-9384-5af06f90e465/Projects/cpgTrafficLights/data/annotation/hg38.phastCons20way.bw", "rb"))
-#	data = bwh.get_as_array('chr1', 10917, 10921)
 	
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='Annotation from BigWig')
 	parser.add_argument('-a', '--annotation', help='annotation file', required=True)
