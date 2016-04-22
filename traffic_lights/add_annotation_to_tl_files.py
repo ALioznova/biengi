@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 import numpy
+from sets import Set
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -56,10 +57,14 @@ if __name__ == '__main__':
 					elif line.split()[1] == '+':
 						new_annotation[cur_line_num] += ',' + annotation_name
 					elif len(line.split()) == 2:
-						new_annotation[cur_line_num] += ',' + annotation_name + '=' + line.split()[1]
+						try:
+							float(line.split()[1])
+							new_annotation[cur_line_num] += ',' + annotation_name + '=' + line.split()[1]
+						except ValueError:
+							new_annotation[cur_line_num] += ',' + annotation_name + '_' + line.split()[1]
 					else:
 						try:
-							float(line.split()[1:][0])
+							float(line.split()[1])
 							cur_data = line.split()[1:]
 							cur_data_f = [float(e) for e in cur_data]
 							cur_data_f = cur_data_f[len(cur_data_f)/2-1: len(cur_data_f)/2+1]
@@ -68,7 +73,9 @@ if __name__ == '__main__':
 								cur_mean = str(cur_mean)
 								new_annotation[cur_line_num] += ',' + annotation_name + '=' + cur_mean
 						except ValueError:
-							new_annotation[cur_line_num] += ',' + annotation_name + '=' + line.split()[1]
+							cur_data = list(Set(line.split()[1:]))
+							for elem in cur_data:
+								new_annotation[cur_line_num] += ',' + annotation_name + '_' + elem
 					cur_line_num += 1
 				anf.close()
 		for i in xrange(len(tl_data)):
