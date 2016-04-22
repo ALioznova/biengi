@@ -58,13 +58,17 @@ if __name__ == '__main__':
 					elif len(line.split()) == 2:
 						new_annotation[cur_line_num] += ',' + annotation_name + '=' + line.split()[1]
 					else:
-						cur_data = line.split()[1:]
-						cur_data_f = [float(e) for e in cur_data]
-						cur_data_f = cur_data_f[len(cur_data_f)/2-1: len(cur_data_f)/2+1]
-						cur_mean = numpy.mean(cur_data_f)
-						if not numpy.isnan(cur_mean):
-							cur_mean = str(cur_mean)
-							new_annotation[cur_line_num] += ',' + annotation_name + '=' + cur_mean
+						try:
+							float(line.split()[1:][0])
+							cur_data = line.split()[1:]
+							cur_data_f = [float(e) for e in cur_data]
+							cur_data_f = cur_data_f[len(cur_data_f)/2-1: len(cur_data_f)/2+1]
+							cur_mean = numpy.mean(cur_data_f)
+							if not numpy.isnan(cur_mean):
+								cur_mean = str(cur_mean)
+								new_annotation[cur_line_num] += ',' + annotation_name + '=' + cur_mean
+						except ValueError:
+							new_annotation[cur_line_num] += ',' + annotation_name + '=' + line.split()[1]
 					cur_line_num += 1
 				anf.close()
 		for i in xrange(len(tl_data)):
