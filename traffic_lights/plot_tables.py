@@ -60,14 +60,16 @@ if __name__ == '__main__':
 			if f.endswith('_tl.txt'):
 				f_tl = f
 				f_bg = f_tl[:-len('_tl.txt')] + '_bg.txt'
-				files.remove(f_bg)
+				if f_bg in files:
+					files.remove(f_bg)
 				annotation = f_tl[:-len('_tl.txt')]
 				f_tl = os.path.join(os.path.join(data_dir, table_dir), f_tl)
 				f_bg = os.path.join(os.path.join(data_dir, table_dir), f_bg)
 			elif f.endswith('_bg.txt'):
 				f_bg = f
 				f_tl = f_bg[:-len('_bg.txt')] + '_tl.txt'
-				files.remove(f_tl)
+				if f_tl in files:
+					files.remove(f_tl)
 				annotation = f_tl[:-len('_tl.txt')]
 				f_tl = os.path.join(os.path.join(data_dir, table_dir), f_tl)
 				f_bg = os.path.join(os.path.join(data_dir, table_dir), f_bg)
@@ -142,6 +144,8 @@ if __name__ == '__main__':
 	new_ann['wgEncodeUwHistoneK562H3k4me3StdPkRep2'] = 'H3k4me3_K562_UHPk2'
 
 	for annotation in all_data.iterkeys():
+		if annotation != 'enhancer':
+			continue
 		if annotation in new_ann.keys():
 			ann = new_ann[annotation]
 		else:
@@ -186,8 +190,14 @@ if __name__ == '__main__':
 		df_whole = Data_frame(['tl'] * len(data_whole_tl) + ['bg'] * len(data_whole_bg),  ['orangered']  * len(data_whole_tl) + ['cyan'] * len(data_whole_bg), data_whole_tl + data_whole_bg, ann)
 
 		if sum([len(set(e)) for e in data_pos_tl + data_pos_bg]) > len([len(set(e)) for e in data_pos_tl + data_pos_bg]):
-			draw_hist([df_pos, df_neg, df_whole], ann, os.path.join(pic_dir, ann + '.png'), 11)
-			draw_hist([df_pos, df_neg, df_whole], ann, os.path.join(pic_dir, ann + '_normed.png'), 11, 1)
+			if ann == 'enhancer':
+				max_enhancer = max([max([max(el) for el in df_pos.data]), max([max(el) for el in df_neg.data]), max([max(el) for el in df_whole.data])])
+				enhancer_bins = np.concatenate((np.linspace(0, 300, num=4, endpoint=False), np.linspace(300, max_enhancer, num=7, endpoint=True)))
+				draw_hist([df_pos, df_neg, df_whole], ann, os.path.join(pic_dir, ann + '.png'), enhancer_bins, 0)
+				draw_hist([df_pos, df_neg, df_whole], ann, os.path.join(pic_dir, ann + '_normed.png'), enhancer_bins, 1)
+			else:
+				draw_hist([df_pos, df_neg, df_whole], ann, os.path.join(pic_dir, ann + '.png'), 11)
+				draw_hist([df_pos, df_neg, df_whole], ann, os.path.join(pic_dir, ann + '_normed.png'), 11, 1)
 		else:
 			draw_hist([df_pos, df_neg, df_whole], ann, os.path.join(pic_dir, ann + '.png'), 2)
 

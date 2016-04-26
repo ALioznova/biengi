@@ -43,7 +43,7 @@ def process_tl(enhancer, tl_dir, out_dir):
 			cur_chr = 'chrX'
 		elif cur_chr == 'chr24':
 			cur_chr = 'chrY'
-		out_file = os.path.join(out_dir, tl_file.split('_')[0] + '_tl_enhancer_annotation.txt')
+		out_file = os.path.join(out_dir, tl_file.split('_')[0] + '_tl_enhancerNewborn_annotation.txt')
 		fout = open(out_file, 'w')		
 		for line in open(os.path.join(tl_dir, tl_file)):
 			# 0-based!
@@ -51,6 +51,9 @@ def process_tl(enhancer, tl_dir, out_dir):
 			pos = int(line.split()[1])
 			strand = line.split()[2]
 			if strand == '+':
+				if not enhancer.has_key(cur_chr):
+					fout.write(str(pos) + '\t-\n')
+					continue
 				if len(enhancer[cur_chr][pos]) > 0 or len(enhancer[cur_chr][pos+1]) > 0:
 					fout.write(str(pos) + '\t')
 					for elem in enhancer[cur_chr][pos]:
@@ -61,6 +64,9 @@ def process_tl(enhancer, tl_dir, out_dir):
 				else:
 					fout.write(str(pos) + '\t-\n')
 			elif strand == '-':
+				if not enhancer.has_key(cur_chr):
+					fout.write(str(pos) + '\t-\n')
+					continue
 				if len(enhancer[cur_chr][pos]) > 0 or len(enhancer[cur_chr][pos-1]) > 0:
 					fout.write(str(pos) + '\t')
 					for elem in enhancer[cur_chr][pos]:
