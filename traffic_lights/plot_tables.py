@@ -144,8 +144,6 @@ if __name__ == '__main__':
 	new_ann['wgEncodeUwHistoneK562H3k4me3StdPkRep2'] = 'H3k4me3_K562_UHPk2'
 
 	for annotation in all_data.iterkeys():
-		if annotation != 'enhancer':
-			continue
 		if annotation in new_ann.keys():
 			ann = new_ann[annotation]
 		else:
