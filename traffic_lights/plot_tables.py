@@ -109,7 +109,6 @@ if __name__ == '__main__':
 	new_ann['wgEncodeUwHistoneK562H3k4me3StdPkRep1'] = 'H3k4me3_K562_UHPk1'
 	new_ann['wgEncodeUwHistoneK562H3k4me3StdPkRep2'] = 'H3k4me3_K562_UHPk2'
 
-
 	all_data = {}
 	cause_dir_all = os.path.join(data_dir, 'all')
 	cause_dir_pos = os.path.join(data_dir, 'causality_pos')
@@ -213,14 +212,19 @@ if __name__ == '__main__':
 		if not (data_binary_all and data_binary_pos and data_binary_neg):
 			if ann == 'enhancer':
 				max_enhancer = max([max([max([max(el) for el in df[cause_item][corr_item].data]) for corr_item in df[cause_item].keys()]) for cause_item in df.keys()])
-
 				enhancer_bins = np.concatenate((np.linspace(0, 300, num=4, endpoint=False), np.linspace(300, max_enhancer, num=7, endpoint=True)))
 				draw_hist(df, ann, os.path.join(pic_dir, ann + '.png'), enhancer_bins, 0)
 				draw_hist(df, ann + '_normed', os.path.join(pic_dir, ann + '_normed.png'), enhancer_bins, 1)
+				enhancer_bins = np.linspace(0, 300, num=11, endpoint=True)
+				draw_hist(df, ann + ' up to 300', os.path.join(pic_dir, ann + '_cut_at_300.png'), enhancer_bins, 0)
+				draw_hist(df, ann + '_normed up to 300', os.path.join(pic_dir, ann + '_normed_cut_at_300.png'), enhancer_bins, 1)
 			else:
 				draw_hist(df, ann, os.path.join(pic_dir, ann + '.png'), 11)
 				draw_hist(df, ann + '_normed', os.path.join(pic_dir, ann + '_normed.png'), 11, 1)
+				if ann in ['enhancerNewborn', 'enhancerNeuroblastoma', 'enhancerColonCarcinoma', 'enhancerAcuteMyeloidLeukemia']:
+					draw_hist(df, ann + '_total', os.path.join(pic_dir, ann + '_total' + '.png'), 1)
 		else:
+			continue
 			draw_hist(df, ann, os.path.join(pic_dir, ann + '.png'), 2)
 
 
