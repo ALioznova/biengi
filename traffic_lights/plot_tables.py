@@ -15,11 +15,11 @@ class Data_frame:
 		self.global_title = global_title
 
 def draw_hist(df, suptitle, pic_path, nbins, normed=0):
+	plt.rcParams.update({'font.size': 22})
 	data = [df['cause_all']['corr_pos'], df['cause_all']['corr_neg'], df['cause_all']['corr_all'],
 		df['cause_pos']['corr_pos'], df['cause_pos']['corr_neg'], df['cause_pos']['corr_all'],
 		df['cause_neg']['corr_pos'], df['cause_neg']['corr_neg'], df['cause_neg']['corr_all']]
-	plt.suptitle(suptitle, fontsize=16)
-	fig, a = plt.subplots(nrows=3, ncols=3, figsize=(24,18))
+	fig, a = plt.subplots(nrows=3, ncols=3, figsize=(36,30))
 	a = a.ravel()
 	for idx,ax in enumerate(a):
 		sum_len = 0
@@ -30,6 +30,8 @@ def draw_hist(df, suptitle, pic_path, nbins, normed=0):
 		ax.hist(data[idx].data, bins=nbins, normed=normed, histtype='bar', color=data[idx].color, label=data[idx].label)
 		ax.set_title(data[idx].global_title)
 	plt.tight_layout()
+	fig.subplots_adjust(top=0.9)
+	plt.suptitle(suptitle, fontsize=40)
 	fig.savefig(pic_path)
 	plt.close(fig)
 
@@ -188,9 +190,9 @@ if __name__ == '__main__':
 			data_neg_bg.append(all_data[annotation][cur_cause][seed_neg]['bg'])
 			data_whole_tl.append(all_data[annotation][cur_cause][seed_whole]['tl'])
 			data_whole_bg.append(all_data[annotation][cur_cause][seed_whole]['bg'])
-		df_pos = Data_frame(['tl'] * len(data_pos_tl) + ['bg'] * len(data_pos_bg),  ['orangered']  * len(data_pos_tl) + ['cyan'] * len(data_pos_bg), data_pos_tl + data_pos_bg, cur_cause + ': corr_pos')
-		df_neg = Data_frame(['tl'] * len(data_neg_tl) + ['bg'] * len(data_neg_bg),  ['orangered']  * len(data_neg_tl) + ['cyan'] * len(data_neg_bg), data_neg_tl + data_neg_bg, cur_cause + ': corr_neg')
-		df_whole = Data_frame(['tl'] * len(data_whole_tl) + ['bg'] * len(data_whole_bg),  ['orangered']  * len(data_whole_tl) + ['cyan'] * len(data_whole_bg), data_whole_tl + data_whole_bg, ann)
+		df_pos = Data_frame(['tl'] * len(data_pos_tl) + ['bg'] * len(data_pos_bg),  ['orangered']  * len(data_pos_tl) + ['cyan'] * len(data_pos_bg), data_pos_tl + data_pos_bg, 'cause_' + (cur_cause).split('_')[-1] + ': corr_pos')
+		df_neg = Data_frame(['tl'] * len(data_neg_tl) + ['bg'] * len(data_neg_bg),  ['orangered']  * len(data_neg_tl) + ['cyan'] * len(data_neg_bg), data_neg_tl + data_neg_bg, 'cause_' + (cur_cause).split('_')[-1] + ': corr_neg')
+		df_whole = Data_frame(['tl'] * len(data_whole_tl) + ['bg'] * len(data_whole_bg),  ['orangered']  * len(data_whole_tl) + ['cyan'] * len(data_whole_bg), data_whole_tl + data_whole_bg, 'cause_' + (cur_cause).split('_')[-1] + ': corr_all')
 		data_binary = True
 		if sum([len(set(e)) for e in data_pos_tl + data_pos_bg]) > len([len(set(e)) for e in data_pos_tl + data_pos_bg]):
 			data_binary = False
