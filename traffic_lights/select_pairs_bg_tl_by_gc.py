@@ -51,6 +51,7 @@ def compute_content_for_chr(ref_file_name, tl_file_name, tl_records_scope):
 		pos = (int(line.split()[1]))
 		gc_content = (GC(cur_chr.seq[pos-window:pos+window+1]))
 		cpg_content = (cur_chr.seq[pos-window:pos+window+1].upper().count('CG'))
+#		tl_records_scope[tl_id] = tl_record(gc_content, cpg_content, line, tl_line_num, cur_chr.id, tl_id)
 		tl_records_scope[tl_id] = tl_record(gc_content, cpg_content, line, tl_line_num, cur_chr.id, tl_id, True)
 		tl_id += 1
 		tl_line_num += 1
@@ -93,37 +94,25 @@ def background_for_gc_and_cpg(tl_background):
 		background_dict_cpg[tl.cpg_content].append(tl_id)
 	return (background_dict_gc, background_dict_cpg)
 
-def find_pair(tl, tl_records_scope):
-	(background_dict_gc, background_dict_cpg) = background_for_gc_and_cpg(tl_records_scope)
+def find_pair(tl, background_dict_gc, background_dict_cpg):
 	gc_max_difference = 0.05
 	sorted_gc = sorted(background_dict_gc.keys())
-	gc_index = bisect.bisect_left(sorted_gc, tl.gc_content)
+	gc_index = bisect.bisect_left(sorted_gc, tl.gc_content * (1 - gc_max_difference))
 	gc_set = Set()
-	pos = gc_index
-	while pos >= 0 and sorted_gc[pos] >= tl.gc_content * (1 - gc_max_difference):
-		for tl_id in background_dict_gc[sorted_gc[pos]]:
+	while gc_index < len(sorted_gc) and sorted_gc[gc_index] <= tl.gc_content * (1 + gc_max_difference):
+		for tl_id in background_dict_gc[sorted_gc[gc_index]]:
 			gc_set.add(tl_id)
-		pos -= 1
-	pos = gc_index
-	while pos < len(sorted_gc) and sorted_gc[pos] <= tl.gc_content * (1 + gc_max_difference):
-		for tl_id in background_dict_gc[sorted_gc[pos]]:
-			gc_set.add(tl_id)
-		pos += 1
+		gc_index += 1
 
 	cpg_max_difference = 0.05
 	sorted_cpg = sorted(background_dict_cpg.keys())
-	cpg_index = bisect.bisect_left(sorted_cpg, tl.cpg_content)
+	cpg_index = bisect.bisect_left(sorted_cpg, tl.cpg_content * (1 - cpg_max_difference))
 	cpg_set = Set()
-	pos = cpg_index
-	while pos >= 0 and sorted_cpg[pos] >= tl.cpg_content * (1 - cpg_max_difference):
-		for tl_id in background_dict_cpg[sorted_cpg[pos]]:
+	while cpg_index < len(sorted_cpg) and sorted_cpg[cpg_index] <= tl.cpg_content * (1 + cpg_max_difference):
+		for tl_id in background_dict_cpg[sorted_cpg[cpg_index]]:
 			cpg_set.add(tl_id)
-		pos -= 1
-	pos = cpg_index
-	while pos < len(sorted_cpg) and sorted_cpg[pos] <= tl.cpg_content * (1 + cpg_max_difference):
-		for tl_id in background_dict_cpg[sorted_cpg[pos]]:
-			cpg_set.add(tl_id)
-		pos += 1
+		cpg_index += 1
+
 	result = gc_set.intersection(cpg_set)
 	return result
 
@@ -132,9 +121,10 @@ def build_tl_pairs(main_tl, background_tl, outf):
 	pairs_list = []
 	bg_used_id = Set()
 	cur_num = 0
+	(background_dict_gc, background_dict_cpg) = background_for_gc_and_cpg(background_tl)
 	for (tl_id, tl) in main_tl.iteritems():
 		cur_num += 1
-		background_records_id = find_pair(tl, background_tl)
+		background_records_id = find_pair(tl, background_dict_gc, background_dict_cpg)
 		bg_record = None
 		while len(background_records_id) > 0:
 			possible_id_index = random.randint(0, len(background_records_id)-1)
@@ -144,7 +134,6 @@ def build_tl_pairs(main_tl, background_tl, outf):
 				outf.write(tl.chr + ':' + str(tl.line_num) + '\t' + bg_record.chr + ':' + str(bg_record.line_num) + '\n')
 				print 'n=', cur_num, tl.tl_id, bg_record.tl_id
 				bg_used_id.add(possible_id)
-#				del background_tl[possible_id]
 				break
 			else:
 				background_records_id.remove(possible_id)
@@ -158,7 +147,7 @@ if __name__ == '__main__':
 		print 'Usage:', sys.argv[0], '-r <reference directory> -t <traffic lights directory> -o <output directory>'
 		exit()
 
-	random.seed(6)
+	random.seed(2)
 	
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='GC and CpG content count')
 	parser.add_argument('-r', '--ref_dir', help='reference directory', required=True)
