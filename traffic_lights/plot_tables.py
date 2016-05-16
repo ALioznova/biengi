@@ -14,7 +14,7 @@ class Data_frame:
 		self.data = data
 		self.global_title = global_title
 
-def draw_hist(df, suptitle, pic_path, nbins, normed=0):
+def draw_hist(df, suptitle, pic_path, nbins, normalized=0):
 	plt.rcParams.update({'font.size': 22})
 	data = [df['cause_all']['corr_pos'], df['cause_all']['corr_neg'], df['cause_all']['corr_all'],
 		df['cause_pos']['corr_pos'], df['cause_pos']['corr_neg'], df['cause_pos']['corr_all'],
@@ -27,7 +27,7 @@ def draw_hist(df, suptitle, pic_path, nbins, normed=0):
 			sum_len += len(elem)
 		if sum_len == 0:
 			continue
-		ax.hist(data[idx].data, bins=nbins, normed=normed, histtype='bar', color=data[idx].color, label=data[idx].label)
+		ax.hist(data[idx].data, bins=nbins, normed=normalized, histtype='bar', color=data[idx].color, label=data[idx].label)
 		ax.set_title(data[idx].global_title)
 	plt.tight_layout()
 	fig.subplots_adjust(top=0.9)
@@ -214,13 +214,13 @@ if __name__ == '__main__':
 				max_enhancer = max([max([max([max(el) for el in df[cause_item][corr_item].data]) for corr_item in df[cause_item].keys()]) for cause_item in df.keys()])
 				enhancer_bins = np.concatenate((np.linspace(0, 300, num=4, endpoint=False), np.linspace(300, max_enhancer, num=7, endpoint=True)))
 				draw_hist(df, ann, os.path.join(pic_dir, ann + '.png'), enhancer_bins, 0)
-				draw_hist(df, ann + '_normed', os.path.join(pic_dir, ann + '_normed.png'), enhancer_bins, 1)
+				draw_hist(df, ann + '_normalized', os.path.join(pic_dir, ann + '_normalized.png'), enhancer_bins, 1)
 				enhancer_bins = np.linspace(0, 300, num=11, endpoint=True)
 				draw_hist(df, ann + ' up to 300', os.path.join(pic_dir, ann + '_cut_at_300.png'), enhancer_bins, 0)
-				draw_hist(df, ann + '_normed up to 300', os.path.join(pic_dir, ann + '_normed_cut_at_300.png'), enhancer_bins, 1)
+				draw_hist(df, ann + '_normalized up to 300', os.path.join(pic_dir, ann + '_cut_at_300_normalized.png'), enhancer_bins, 1)
 			else:
 				draw_hist(df, ann, os.path.join(pic_dir, ann + '.png'), 11)
-				draw_hist(df, ann + '_normed', os.path.join(pic_dir, ann + '_normed.png'), 11, 1)
+				draw_hist(df, ann + '_normalized', os.path.join(pic_dir, ann + '_normalized.png'), 11, 1)
 				if ann in ['enhancerNewborn', 'enhancerNeuroblastoma', 'enhancerColonCarcinoma', 'enhancerAcuteMyeloidLeukemia']:
 					draw_hist(df, ann + '_total', os.path.join(pic_dir, ann + '_total' + '.png'), 1)
 		else:

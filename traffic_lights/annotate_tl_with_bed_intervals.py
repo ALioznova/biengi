@@ -8,18 +8,18 @@ from intervaltree import Interval, IntervalTree
 def parse_snp(snp_file):
 	snp = {}
 	for line in open(snp_file):
-		chr_name = line.split()[0]
+		chr_name = line.split()[1]
 		if not snp.has_key(chr_name):
 			snp[chr_name] = IntervalTree()
 		# 0-based
-		beg = int(line.split()[1])
-		end = int(line.split()[2])
+		beg = int(line.split()[2])
+		end = int(line.split()[3])
 		if beg == end:
 			#insertion
 			end += 0.1
 		# not including upper limit
-		snp[chr_name].add(Interval(beg, end))
-#		snp[chr_name][beg:end] = line.split()[3]
+#		snp[chr_name].add(Interval(beg, end))
+		snp[chr_name][beg:end] = line.split()[11]
 	return snp
 
 def process_tl(snp, tl_dir, out_dir, annotation):
@@ -41,24 +41,24 @@ def process_tl(snp, tl_dir, out_dir, annotation):
 			strand = line.split()[2]
 			if strand == '+':
 				if len(snp[cur_chr][pos]) > 0 or len(snp[cur_chr][pos+1]) > 0:
-					fout.write(str(pos) + '\t+\n')
-#					fout.write(str(pos) + '\t')
-#					for elem in snp[cur_chr][pos]:
-#						fout.write(elem.data + '\t')
-#					for elem in snp[cur_chr][pos+1]:
-#						fout.write(elem.data + '\t')
-#					fout.write('\n')
+#					fout.write(str(pos) + '\t+\n')
+					fout.write(str(pos) + '\t')
+					for elem in snp[cur_chr][pos]:
+						fout.write(elem.data + '\t')
+					for elem in snp[cur_chr][pos+1]:
+						fout.write(elem.data + '\t')
+					fout.write('\n')
 				else:
 					fout.write(str(pos) + '\t-\n')
 			elif strand == '-':
 				if len(snp[cur_chr][pos]) > 0 or len(snp[cur_chr][pos-1]) > 0:
-					fout.write(str(pos) + '\t+\n')
-#					fout.write(str(pos) + '\t')
-#					for elem in snp[cur_chr][pos]:
-#						fout.write(elem.data + '\t')
-#					for elem in snp[cur_chr][pos-1]:
-#						fout.write(elem.data + '\t')
-#					fout.write('\n')
+#					fout.write(str(pos) + '\t+\n')
+					fout.write(str(pos) + '\t')
+					for elem in snp[cur_chr][pos]:
+						fout.write(elem.data + '\t')
+					for elem in snp[cur_chr][pos-1]:
+						fout.write(elem.data + '\t')
+					fout.write('\n')
 				else:
 					fout.write(str(pos) + '\t-\n')
 			else:
