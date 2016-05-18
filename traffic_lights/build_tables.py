@@ -23,7 +23,8 @@ class tl_record:
 				self.annotation[elem] = True
 			else:
 				self.annotation[elem.split('=')[0]] = float(elem.split('=')[1])
-		calculated_data = [elem.split(')')[0].split() for elem in tl_line.split('(')[1:]]
+		only_calculated_data = '\t'.join(tl_line.split()[4:])
+		calculated_data = [elem.split(')')[0].split() for elem in only_calculated_data.split('(')[1:]]
 		calculated_data = [[int(elem[0]), float(elem[1]), float(elem[2]), float(elem[3]), float(elem[4])] for elem in calculated_data]
 		self.extra = calculated_data
 		selected_data = calculated_data[0]
@@ -49,7 +50,8 @@ def compute_content_for_chr(ref_file_name, tl_file_name, tl_records_scope):
 		pos = (int(line.split()[1]))
 		gc_content = (GC(cur_chr.seq[pos-window:pos+window+1]))
 		cpg_content = (cur_chr.seq[pos-window:pos+window+1].upper().count('CG'))
-		tl_records_scope[tl_id] = tl_record(gc_content, cpg_content, line, tl_line_num, cur_chr.id, tl_id)
+		tl_records_scope[tl_id] = tl_record(gc_content, cpg_content, line, tl_line_num, cur_chr.id, tl_id, True)
+#		tl_records_scope[tl_id] = tl_record(gc_content, cpg_content, line, tl_line_num, cur_chr.id, tl_id)
 		tl_id += 1
 		tl_line_num += 1
 

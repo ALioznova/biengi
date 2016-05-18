@@ -42,11 +42,12 @@ if __name__ == '__main__':
 		new_annotation = []
 		pos = []
 		for i in xrange(len(tl_data)):
-			new_annotation.append(tl_data[i][3])
+			new_annotation.append('')
+#			new_annotation.append(tl_data[i][3])
 			pos.append(tl_data[i][1])
 		for ann_dir_elem in ann_dir_list:
 			if ann_dir_elem.startswith(tl_file.split('_')[0] + '_tl'):
-				annotation_name = ann_dir_elem.split('_')[2]
+				annotation_name = '_'.join(ann_dir_elem.split('_')[2:-1])
 				anf = open(os.path.join(ann_dir, ann_dir_elem))
 				cur_line_num = 0
 				for line in anf:
@@ -79,7 +80,11 @@ if __name__ == '__main__':
 					cur_line_num += 1
 				anf.close()
 		for i in xrange(len(tl_data)):
-			tl_data[i][3] = new_annotation[i]
+#			tl_data[i][3] = new_annotation[i]
+			if new_annotation[i][1:] != '':
+				tl_data[i][3] = new_annotation[i][1:]
+			else:
+				tl_data[i][3] = '_'
 		outf = open(os.path.join(out_dir, tl_file), 'w')
 		for line in tl_data:
 			outf.write(line[0])

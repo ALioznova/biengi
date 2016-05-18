@@ -4,12 +4,6 @@ import os
 import sys
 import argparse
 from intervaltree import Interval, IntervalTree
-from enum import Enum
-
-class Enhancer_type(Enum):
-	low = -1
-	medium = 0
-	high = 1
 
 def parse_enhancer(enhancer_file):
 	enhancer = {}
@@ -24,18 +18,11 @@ def parse_enhancer(enhancer_file):
 		# 0-based
 		beg = int(coords_info.split(':')[1].split('-')[0])
 		end = int(coords_info.split(':')[1].split('-')[1])
-		# not including upper limit
-#		if usage < 10:
-#			enhancer[chr_name][beg:end] = Enhancer_type.low
-#		elif usage > 1000:
-#			enhancer[chr_name][beg:end] = Enhancer_type.high
-#		else:
-#			enhancer[chr_name][beg:end] = Enhancer_type.medium
 		enhancer[chr_name][beg:end] = str(usage)
 	fin.close()
 	return enhancer
 
-def process_tl(enhancer, tl_dir, out_dir):
+def process_tl(enhancer, tl_dir, out_dir, out_file_name_ending):
 	tl_dir_list = os.listdir(tl_dir)
 	for tl_file in tl_dir_list:
 		cur_chr = 'chr' + tl_file.split('_')[0]
@@ -43,7 +30,7 @@ def process_tl(enhancer, tl_dir, out_dir):
 			cur_chr = 'chrX'
 		elif cur_chr == 'chr24':
 			cur_chr = 'chrY'
-		out_file = os.path.join(out_dir, tl_file.split('_')[0] + '_tl_enhancerNewborn_annotation.txt')
+		out_file = os.path.join(out_dir, tl_file.split('_')[0] + out_file_name_ending)
 		fout = open(out_file, 'w')		
 		for line in open(os.path.join(tl_dir, tl_file)):
 			# 0-based!
@@ -83,20 +70,20 @@ def process_tl(enhancer, tl_dir, out_dir):
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
-		print 'Usage:', sys.argv[0], '-e <enhancer annotation file> -t <traffic lights directory> -o <output directory>'
+		print 'Usage:', sys.argv[0], '-e <enhancer annotation directory> -t <traffic lights directory> -o <output directory>'
 		exit()
 
 	parser = argparse.ArgumentParser(prog = sys.argv[0], description='GC and CpG content count')
-	parser.add_argument('-e', '--enhancer_file', help='enhancer annotation file directory', required=True)
+	parser.add_argument('-e', '--enhancer_dir', help='enhancer annotation directory', required=True)
 	parser.add_argument('-t', '--tl_dir', help='traffic lights directory', required=True)
 	parser.add_argument('-o', '--out_dir', help='output directory', required=True)
 	args = parser.parse_args()
-	enhancer_file = args.enhancer_file
+	enhancer_dir = args.enhancer_dir
 	tl_dir = args.tl_dir
 	out_dir = args.out_dir
 
-	if not os.path.isfile(enhancer_file):
-		print >> sys.stderr, 'Not a file ' + enhancer_file
+	if not os.path.isdir(enhancer_dir):
+		print >> sys.stderr, 'Not a dir ' + enhancer_dir
 		sys.exit(1)
 
 	if not os.path.isdir(tl_dir):
@@ -106,6 +93,8 @@ if __name__ == '__main__':
 	if not os.path.exists(out_dir):
 		os.mkdir(out_dir)
 
-	enhancer = parse_enhancer(enhancer_file)
-	process_tl(enhancer, tl_dir, out_dir)
-	
+	for enhancer_file in os.listdir(enhancer_dir):
+		enhancer = parse_enhancer(os.path.join(enhancer_dir, enhancer_file))
+		out_file_name_ending = '_tl_' + enhancer_file[len('F5.hg38.enhancers_'):-len('.txt')] + '_annotation.txt'
+		process_tl(enhancer, tl_dir, out_dir, out_file_name_ending)
+
