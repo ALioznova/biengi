@@ -14,11 +14,38 @@ class Data_frame:
 		self.data = data
 		self.global_title = global_title
 
-def draw_hist(df, suptitle, pic_path, nbins, normalized=0):
+def check_diff(tl, bg, total_num = 37391):
+	tl_mean = np.mean(tl)
+	bg_mean = np.mean(bg)
+	is_different = False
+	# check here
+	return is_different
+
+def draw_hist(df, suptitle, pic_path, nbins, normalized=0, check_significance=False):
 	plt.rcParams.update({'font.size': 22})
 	data = [df['cause_all']['corr_pos'], df['cause_all']['corr_neg'], df['cause_all']['corr_all'],
 		df['cause_pos']['corr_pos'], df['cause_pos']['corr_neg'], df['cause_pos']['corr_all'],
 		df['cause_neg']['corr_pos'], df['cause_neg']['corr_neg'], df['cause_neg']['corr_all']]
+	if check_significance:
+		data_worth_plotting = False
+		for data_elem in data:
+			bg_data = []
+			tl_data = []
+			cur_data = [len(d) for d in data_elem.data]
+			cur_labels = data_elem.label
+			for i in xrange(len(cur_labels)):
+				if cur_labels[i] == 'tl':
+					tl_data.append(cur_data[i])
+				elif cur_labels[i] == 'bg':
+					bg_data.append(cur_data[i])
+				else:
+					print 'unknown data label', cur_labels[i]
+			is_different = check_diff(tl_data, bg_data)
+			data_worth_plotting = (data_worth_plotting or is_different)
+			if is_different:
+				pass # change plot colors
+		if not data_worth_plotting:
+			return
 	fig, a = plt.subplots(nrows=3, ncols=3, figsize=(36,30))
 	a = a.ravel()
 	for idx,ax in enumerate(a):
@@ -34,6 +61,7 @@ def draw_hist(df, suptitle, pic_path, nbins, normalized=0):
 	plt.suptitle(suptitle, fontsize=40)
 	fig.savefig(pic_path)
 	plt.close(fig)
+
 
 if __name__ == '__main__':
 	if len(sys.argv) == 1:
@@ -213,18 +241,20 @@ if __name__ == '__main__':
 			if ann == 'enhancer':
 				max_enhancer = max([max([max([max(el) for el in df[cause_item][corr_item].data]) for corr_item in df[cause_item].keys()]) for cause_item in df.keys()])
 				enhancer_bins = np.concatenate((np.linspace(0, 300, num=4, endpoint=False), np.linspace(300, max_enhancer, num=7, endpoint=True)))
-				draw_hist(df, ann, os.path.join(pic_dir, ann + '.png'), enhancer_bins, 0)
-				draw_hist(df, ann + '_normalized', os.path.join(pic_dir, ann + '_normalized.png'), enhancer_bins, 1)
+				draw_hist(df = df, suptitle = ann, pic_path = os.path.join(pic_dir, ann + '.png'), nbins = enhancer_bins, normalized = 0)
+				draw_hist(df = df, suptitle = ann + '_normalized', pic_path = os.path.join(pic_dir, ann + '_normalized.png'), nbins = enhancer_bins, normalized = 1)
 				enhancer_bins = np.linspace(0, 300, num=11, endpoint=True)
-				draw_hist(df, ann + ' up to 300', os.path.join(pic_dir, ann + '_cut_at_300.png'), enhancer_bins, 0)
-				draw_hist(df, ann + '_normalized up to 300', os.path.join(pic_dir, ann + '_cut_at_300_normalized.png'), enhancer_bins, 1)
+				draw_hist(df = df, suptitle = ann + ' up to 300', pic_path = os.path.join(pic_dir, ann + '_cut_at_300.png'), nbins = enhancer_bins, normalized = 0)
+				draw_hist(df = df, suptitle = ann + '_normalized up to 300', pic_path = os.path.join(pic_dir, ann + '_cut_at_300_normalized.png'), nbins = enhancer_bins, normalized = 1)
+			elif 'CL:' in ann:
+				draw_hist(df = df, suptitle = ann, pic_path = os.path.join(pic_dir, ann + '.png'), nbins = 1, check_significance = True)
+			elif ann in ['enhancerNewborn', 'enhancerNeuroblastoma', 'enhancerColonCarcinoma', 'enhancerAcuteMyeloidLeukemia']:
+				draw_hist(df = df, suptitle = ann + '_total', pic_path = os.path.join(pic_dir, ann + '_total' + '.png'), nbins = 1, check_significance = True)
 			else:
-				draw_hist(df, ann, os.path.join(pic_dir, ann + '.png'), 11)
-				draw_hist(df, ann + '_normalized', os.path.join(pic_dir, ann + '_normalized.png'), 11, 1)
-				if ann in ['enhancerNewborn', 'enhancerNeuroblastoma', 'enhancerColonCarcinoma', 'enhancerAcuteMyeloidLeukemia']:
-					draw_hist(df, ann + '_total', os.path.join(pic_dir, ann + '_total' + '.png'), 1)
+				draw_hist(df = df, suptitle = ann, pic_path = os.path.join(pic_dir, ann + '.png'), nbins = 11)
+				draw_hist(df = df, suptitle = ann + '_normalized', pic_path = os.path.join(pic_dir, ann + '_normalized.png'), nbins = 11, normalized = 1)
+				draw_hist(df = df, suptitle = ann + '_total', pic_path = os.path.join(pic_dir, ann + '_total' + '.png'), nbins = 1, check_significance = True)
 		else:
-			continue
-			draw_hist(df, ann, os.path.join(pic_dir, ann + '.png'), 2)
+			draw_hist(df = df, suptitle = ann, pic_path = os.path.join(pic_dir, ann + '.png'), nbins = 1, check_significance = True)
 
 
