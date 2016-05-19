@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from sets import Set
+from scipy import stats
 
 class Data_frame:
 	def __init__(self, label, color, data, global_title):
@@ -14,11 +15,13 @@ class Data_frame:
 		self.data = data
 		self.global_title = global_title
 
-def check_diff(tl, bg, total_num = 37391):
+def check_diff(tl, bg, total_num = 100015): # total_num = 100015 with clusters, total_num = 37391 without them
 	tl_mean = np.mean(tl)
 	bg_mean = np.mean(bg)
 	is_different = False
-	# check here
+	oddsratio, pvalue = stats.fisher_exact([[tl_mean, total_num - tl_mean], [bg_mean, total_num - bg_mean]])
+	if pvalue < 0.00005:
+		is_different = True
 	return is_different
 
 def draw_hist(df, suptitle, pic_path, nbins, normalized=0, check_significance=False):
@@ -42,8 +45,16 @@ def draw_hist(df, suptitle, pic_path, nbins, normalized=0, check_significance=Fa
 					print 'unknown data label', cur_labels[i]
 			is_different = check_diff(tl_data, bg_data)
 			data_worth_plotting = (data_worth_plotting or is_different)
-			if is_different:
-				pass # change plot colors
+			if not is_different:
+				new_colors = []
+				for clr in data_elem.color:
+					if clr == 'cyan':
+						new_colors.append('lightcyan')
+					elif clr == 'orangered':
+						new_colors.append('lightsalmon')
+					else:
+						new_colors.append(clr)
+				data_elem.color = new_colors
 		if not data_worth_plotting:
 			return
 	fig, a = plt.subplots(nrows=3, ncols=3, figsize=(36,30))
