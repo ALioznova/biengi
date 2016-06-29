@@ -5,6 +5,7 @@ import sys
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from sets import Set
 from scipy import stats
 
@@ -57,7 +58,7 @@ def draw_hist(df, suptitle, pic_path, nbins, normalized=0, check_significance=Fa
 				data_elem.color = new_colors
 		if not data_worth_plotting:
 			return
-	fig, a = plt.subplots(nrows=3, ncols=3, figsize=(36,30))
+	fig, a = plt.subplots(nrows=3, ncols=3, figsize=(30,36))
 	a = a.ravel()
 	for idx,ax in enumerate(a):
 		sum_len = 0
@@ -65,11 +66,29 @@ def draw_hist(df, suptitle, pic_path, nbins, normalized=0, check_significance=Fa
 			sum_len += len(elem)
 		if sum_len == 0:
 			continue
-		ax.hist(data[idx].data, bins=nbins, normed=normalized, histtype='bar', color=data[idx].color, label=data[idx].label)
-		ax.set_title(data[idx].global_title)
+		if [sum(el) for el in data[idx].data] != [len(el) for el in data[idx].data]:
+			ax.hist(data[idx].data, bins=nbins, normed=normalized, histtype='bar', color=data[idx].color, label=data[idx].label)
+			continue
+		data_for_plot = [len(el) for el in data[idx].data]
+		bars = [np.mean(data_for_plot[:len(data_for_plot)/2]), np.mean(data_for_plot[len(data_for_plot)/2:])]
+		errors = [max(data_for_plot[:len(data_for_plot)/2]) - bars[0], max(data_for_plot[len(data_for_plot)/2:]) - bars[1]]
+		width = 0.25 # bar width
+		ax.set_xlim(0, 1)
+		ax.bar(np.array([0.2]), bars[0], width, color=data[idx].color[0]) # first param -- x-coords of the bar
+		ax.bar(np.array([0.3]) + width, bars[1], width, color=data[idx].color[-1], yerr=errors[1], error_kw=dict(ecolor='gray', capsize=50, lw=20,capthick=20)) # error_kw -- error bars, caps -- horizontal part
+		ax.tick_params(axis='both', which='major', labelsize=40) # y axis text size
+		ax.tick_params(axis='both', which='minor', labelsize=30)
+		ax.set_xticklabels([])
+		ax.set_xticks([])
+		ax.set_title(data[idx].global_title, fontsize=50) # title of the subplot
+		ttl = ax.title
+		ttl.set_position([.5, 1.05]) # h space between subplots
 	plt.tight_layout()
-	fig.subplots_adjust(top=0.9)
-	plt.suptitle(suptitle, fontsize=40)
+	fig.subplots_adjust(top=0.85, hspace = 0.2) # some extra space at teh top of total pic
+	plt.suptitle(suptitle, fontsize=70) # title of the whole fig
+	TL_patch = mpatches.Patch(color='orangered', label='TL')
+	BG_patch = mpatches.Patch(color='cyan', label='BG')
+	fig.legend( (TL_patch, BG_patch), ('TL', 'BG'), prop={'size':50} ) # legend
 	fig.savefig(pic_path)
 	plt.close(fig)
 
@@ -228,9 +247,15 @@ if __name__ == '__main__':
 			data_neg_bg.append(all_data[annotation][cur_cause][seed_neg]['bg'])
 			data_whole_tl.append(all_data[annotation][cur_cause][seed_whole]['tl'])
 			data_whole_bg.append(all_data[annotation][cur_cause][seed_whole]['bg'])
-		df_pos = Data_frame(['tl'] * len(data_pos_tl) + ['bg'] * len(data_pos_bg),  ['orangered']  * len(data_pos_tl) + ['cyan'] * len(data_pos_bg), data_pos_tl + data_pos_bg, 'cause_' + (cur_cause).split('_')[-1] + ': corr_pos')
-		df_neg = Data_frame(['tl'] * len(data_neg_tl) + ['bg'] * len(data_neg_bg),  ['orangered']  * len(data_neg_tl) + ['cyan'] * len(data_neg_bg), data_neg_tl + data_neg_bg, 'cause_' + (cur_cause).split('_')[-1] + ': corr_neg')
-		df_whole = Data_frame(['tl'] * len(data_whole_tl) + ['bg'] * len(data_whole_bg),  ['orangered']  * len(data_whole_tl) + ['cyan'] * len(data_whole_bg), data_whole_tl + data_whole_bg, 'cause_' + (cur_cause).split('_')[-1] + ': corr_all')
+		if (cur_cause).split('_')[-1] == 'pos':
+			cause_label = 'cause > 1'
+		elif (cur_cause).split('_')[-1] == 'neg':
+			cause_label = 'cause < -1'
+		if (cur_cause).split('_')[-1] == 'all':
+			cause_label = ''
+		df_pos = Data_frame(['tl'] * len(data_pos_tl) + ['bg'] * len(data_pos_bg),  ['orangered']  * len(data_pos_tl) + ['cyan'] * len(data_pos_bg), data_pos_tl + data_pos_bg, cause_label + ', corr > 0' if cause_label != '' else 'corr > 0')
+		df_neg = Data_frame(['tl'] * len(data_neg_tl) + ['bg'] * len(data_neg_bg),  ['orangered']  * len(data_neg_tl) + ['cyan'] * len(data_neg_bg), data_neg_tl + data_neg_bg, cause_label + ', corr < 0' if cause_label != '' else 'corr < 0')
+		df_whole = Data_frame(['tl'] * len(data_whole_tl) + ['bg'] * len(data_whole_bg),  ['orangered']  * len(data_whole_tl) + ['cyan'] * len(data_whole_bg), data_whole_tl + data_whole_bg, cause_label + '')
 		data_binary = True
 		if sum([len(set(e)) for e in data_pos_tl + data_pos_bg]) > len([len(set(e)) for e in data_pos_tl + data_pos_bg]):
 			data_binary = False
