@@ -75,7 +75,7 @@ def draw_hist(df, suptitle, pic_path, nbins, normalized=0, check_significance=Fa
 		width = 0.25 # bar width
 		ax.set_xlim(0, 1)
 		ax.bar(np.array([0.2]), bars[0], width, color=data[idx].color[0]) # first param -- x-coords of the bar
-		ax.bar(np.array([0.3]) + width, bars[1], width, color=data[idx].color[-1], yerr=errors[1], error_kw=dict(ecolor='gray', capsize=50, lw=20,capthick=20)) # error_kw -- error bars, caps -- horizontal part
+		ax.bar(np.array([0.3]) + width, bars[1], width, color=data[idx].color[-1], yerr=errors[1], error_kw=dict(ecolor='gray', capsize=50, lw=5,capthick=5)) # error_kw -- error bars, caps -- horizontal part
 		ax.tick_params(axis='both', which='major', labelsize=40) # y axis text size
 		ax.tick_params(axis='both', which='minor', labelsize=30)
 		ax.set_xticklabels([])
@@ -85,7 +85,7 @@ def draw_hist(df, suptitle, pic_path, nbins, normalized=0, check_significance=Fa
 		ttl.set_position([.5, 1.05]) # h space between subplots
 	plt.tight_layout()
 	fig.subplots_adjust(top=0.85, hspace = 0.2) # some extra space at teh top of total pic
-	plt.suptitle(suptitle, fontsize=70) # title of the whole fig
+	plt.suptitle(suptitle.replace('_', ' '), fontsize=70) # title of the whole fig
 	TL_patch = mpatches.Patch(color='orangered', label='TL')
 	BG_patch = mpatches.Patch(color='cyan', label='BG')
 	fig.legend( (TL_patch, BG_patch), ('TL', 'BG'), prop={'size':50} ) # legend
